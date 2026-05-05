@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { UsersService } from './modules/users/users.service';
+import { HoursModule } from './modules/hours/hours.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { UsersService } from './modules/users/users.service';
     }),
     AuthModule,
     UsersModule,
+    HoursModule,
   ],
 })
 export class AppModule implements OnModuleInit {
