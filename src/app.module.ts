@@ -9,6 +9,9 @@ import { RequestsModule } from './modules/requests/requests.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { NetworkModule } from './modules/network/network.module';
 import { ChatbotModule } from './modules/chatbot/chatbot.module';
+import { ParametersModule } from './modules/parameters/parameters.module';
+import { ParametersService } from './modules/parameters/parameters.service';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -35,12 +38,18 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
     ReportsModule,
     NetworkModule,
     ChatbotModule,
+    ParametersModule,
+    SettingsModule,
   ],
 })
 export class AppModule implements OnModuleInit {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private parametersService: ParametersService,
+  ) {}
 
   async onModuleInit() {
     await this.usersService.seedAdmin();
+    await this.parametersService.seedDefaultParameters();
   }
 }
