@@ -8,6 +8,7 @@ import { HoursModule } from './modules/hours/hours.module';
 import { RequestsModule } from './modules/requests/requests.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { NetworkModule } from './modules/network/network.module';
+import { ChatbotModule } from './modules/chatbot/chatbot.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { NetworkModule } from './modules/network/network.module';
     RequestsModule,
     ReportsModule,
     NetworkModule,
+    ChatbotModule,
   ],
 })
 export class AppModule implements OnModuleInit {
