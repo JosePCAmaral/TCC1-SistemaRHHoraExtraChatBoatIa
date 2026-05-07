@@ -5,6 +5,7 @@ import { HourRecord, RecordType, DayType, RecordStatus } from './entities/hour-r
 import { User } from '../users/entities/user.entity';
 import { ClockInDto } from './dto/clock-in.dto';
 import { ManualRecordDto } from './dto/manual-record.dto';
+import { NetworkService } from '../network/network.service';
 
 const TOLERANCE_MINUTES = 10;
 const NIGHT_START = 22;
@@ -17,12 +18,15 @@ export class HoursService {
     private hourRecordRepository: Repository<HourRecord>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private networkService: NetworkService,
   ) {}
 
   // Registra entrada ou saída automaticamente
   async clockIn(userId: number, dto: ClockInDto, ipAddress: string): Promise<HourRecord> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    await this.networkService.enforceIpCheck(userId, ipAddress, 'Registro de ponto');
 
     const now = new Date();
     const date = now.toISOString().split('T')[0];
