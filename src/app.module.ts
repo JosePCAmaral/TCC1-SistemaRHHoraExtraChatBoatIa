@@ -5,6 +5,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { UsersService } from './modules/users/users.service';
 import { HoursModule } from './modules/hours/hours.module';
+import { RequestsModule } from './modules/requests/requests.module';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { HoursModule } from './modules/hours/hours.module';
       useFactory: (config: ConfigService) => ({
         type: 'mysql',
         host: config.get('DB_HOST'),
-        port: Number(config.get<string>('DB_PORT') ?? 3306),
+        port: +config.get<number>('DB_PORT'),
         username: config.get('DB_USER'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
@@ -27,6 +28,7 @@ import { HoursModule } from './modules/hours/hours.module';
     AuthModule,
     UsersModule,
     HoursModule,
+    RequestsModule,
   ],
 })
 export class AppModule implements OnModuleInit {
