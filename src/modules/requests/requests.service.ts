@@ -22,17 +22,23 @@ export class RequestsService {
   }
 
   async findAll(): Promise<Request[]> {
-    return this.requestRepository.find({
+    const requests = await this.requestRepository.find({
       relations: ['user', 'reviewer'],
       order: { createdAt: 'DESC' },
     });
+    requests.forEach(r => {
+      if (r.user) delete r.user.password;
+      if (r.reviewer) delete r.reviewer.password;
+    });
+    return requests;
   }
 
   async findByUser(userId: number): Promise<Request[]> {
-    return this.requestRepository.find({
+    const requests = await this.requestRepository.find({
       where: { userId },
       order: { createdAt: 'DESC' },
     });
+    return requests;
   }
 
   async findPending(): Promise<Request[]> {
@@ -49,11 +55,18 @@ export class RequestsService {
       relations: ['user', 'reviewer'],
     });
     if (!request) throw new NotFoundException('Solicitação não encontrada');
+    
+    // Remove senha dos objetos relacionados
+    if (request.user) delete request.user.password;
+    if (request.reviewer) delete request.reviewer.password;
+    
     return request;
   }
 
   async review(id: number, reviewerId: number, dto: ReviewRequestDto): Promise<Request> {
-    const request = await this.findOne(id);
+    const request = await this.requestRepository.findOne({ where: { id } });
+    
+    if (!request) throw new NotFoundException('Solicitação não encontrada');
 
     if (request.status !== RequestStatus.PENDENTE) {
       throw new BadRequestException('Esta solicitação já foi analisada');
@@ -64,7 +77,8 @@ export class RequestsService {
     request.reviewerComment = dto.reviewerComment;
     request.reviewedAt = new Date();
 
-    return this.requestRepository.save(request);
+    const saved = await this.requestRepository.save(request);
+    return this.findOne(saved.id);
   }
 
   async cancel(id: number, userId: number): Promise<Request> {

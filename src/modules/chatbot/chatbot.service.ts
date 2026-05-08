@@ -2,7 +2,6 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ChatMessage, MessageRole } from './entities/chat-message.entity';
 import { ChatDto } from './dto/chat.dto';
 import { User } from '../users/entities/user.entity';
@@ -11,7 +10,8 @@ import { Request, RequestStatus } from '../requests/entities/request.entity';
 
 @Injectable()
 export class ChatbotService {
-  private genAI: GoogleGenerativeAI;
+  private ollamaUrl: string;
+  private model: string;
 
   constructor(
     @InjectRepository(ChatMessage)
@@ -24,24 +24,22 @@ export class ChatbotService {
     private requestRepository: Repository<Request>,
     private configService: ConfigService,
   ) {
-    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-    this.genAI = new GoogleGenerativeAI(apiKey);
+    this.ollamaUrl = this.configService.get<string>('OLLAMA_URL') ?? 'http://ollama:11434';
+    this.model = this.configService.get<string>('OLLAMA_MODEL') ?? 'llama3.2';
   }
 
   async chat(userId: number, dto: ChatDto): Promise<{ response: string; sessionId: string }> {
     const sessionId = dto.sessionId ?? `session-${userId}-${Date.now()}`;
 
-    // Busca contexto do colaborador
     const context = await this.buildUserContext(userId);
+    const systemPrompt = this.buildSystemPrompt(context);
 
-    // Busca histórico da sessão (últimas 10 mensagens)
     const history = await this.chatMessageRepository.find({
       where: { userId, sessionId },
       order: { createdAt: 'ASC' },
       take: 10,
     });
 
-    // Salva mensagem do usuário
     await this.chatMessageRepository.save(
       this.chatMessageRepository.create({
         userId,
@@ -51,26 +49,39 @@ export class ChatbotService {
       }),
     );
 
-    // Monta o prompt com contexto
-    const systemPrompt = this.buildSystemPrompt(context);
+    // Monta mensagens no formato Ollama
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...history.map(msg => ({
+        role: msg.role === MessageRole.USER ? 'user' : 'assistant',
+        content: msg.content,
+      })),
+      { role: 'user', content: dto.message },
+    ];
 
     try {
-      const model = this.genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        systemInstruction: systemPrompt,
+      const response = await fetch(`${this.ollamaUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: this.model,
+          messages,
+          stream: false,
+          options: {
+            temperature: 0.7,
+            num_predict: 512,
+          },
+        }),
       });
 
-      // Monta histórico no formato Gemini
-      const geminiHistory = history.map(msg => ({
-        role: msg.role === MessageRole.USER ? 'user' : 'model',
-        parts: [{ text: msg.content }],
-      }));
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Ollama error: ${error}`);
+      }
 
-      const chat = model.startChat({ history: geminiHistory });
-      const result = await chat.sendMessage(dto.message);
-      const responseText = result.response.text();
+      const data = await response.json() as any;
+      const responseText = data.message?.content ?? 'Desculpe, não consegui processar sua mensagem.';
 
-      // Salva resposta do assistente
       await this.chatMessageRepository.save(
         this.chatMessageRepository.create({
           userId,
@@ -81,13 +92,12 @@ export class ChatbotService {
       );
 
       return { response: responseText, sessionId };
-    } catch (error: unknown) {
+    } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new InternalServerErrorException('Erro ao processar mensagem: ' + message);
     }
   }
 
-  // Busca histórico de uma sessão
   async getHistory(userId: number, sessionId: string): Promise<ChatMessage[]> {
     return this.chatMessageRepository.find({
       where: { userId, sessionId },
@@ -95,9 +105,8 @@ export class ChatbotService {
     });
   }
 
-  // Lista sessões do usuário
   async getSessions(userId: number): Promise<any[]> {
-    const messages = await this.chatMessageRepository
+    return this.chatMessageRepository
       .createQueryBuilder('msg')
       .select('msg.sessionId', 'sessionId')
       .addSelect('MIN(msg.createdAt)', 'startedAt')
@@ -107,17 +116,13 @@ export class ChatbotService {
       .groupBy('msg.sessionId')
       .orderBy('lastMessageAt', 'DESC')
       .getRawMany();
-
-    return messages;
   }
 
-  // Limpa histórico de uma sessão
   async clearSession(userId: number, sessionId: string): Promise<{ message: string }> {
     await this.chatMessageRepository.delete({ userId, sessionId });
     return { message: 'Sessão encerrada com sucesso' };
   }
 
-  // Constrói o contexto do colaborador para o prompt
   private async buildUserContext(userId: number): Promise<any> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
@@ -162,7 +167,6 @@ export class ChatbotService {
     };
   }
 
-  // Monta o system prompt com contexto do colaborador
   private buildSystemPrompt(context: any): string {
     const { user, todayRecords, monthSummary, requests } = context;
     const now = new Date();
@@ -171,57 +175,40 @@ export class ChatbotService {
     return `Você é o RHIANA, assistente virtual inteligente do sistema de Gestão de Recursos Humanos da empresa.
 Você é especialista em legislação trabalhista brasileira (CLT) e em todos os processos internos de RH.
 
-## IDENTIDADE
+IDENTIDADE:
 - Nome: RHIANA (Recursos Humanos com Inteligência Artificial e Análise)
 - Tom: Profissional, prestativo e objetivo. Use linguagem clara e amigável.
 - Idioma: Sempre responda em português brasileiro.
 - Nunca invente informações. Se não souber algo, oriente o colaborador a contatar o RH.
 
-## COLABORADOR ATUAL
+COLABORADOR ATUAL:
 - Nome: ${user?.name ?? 'Colaborador'}
 - Cargo: ${user?.position ?? 'Não informado'}
 - Departamento: ${user?.department ?? 'Não informado'}
 - Jornada: ${user?.workStartTime ?? '08:00'} às ${user?.workEndTime ?? '17:00'}
-- Perfil: ${user?.role ?? 'colaborador'}
 
-## DADOS DO MÊS ATUAL (${now.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })})
+DADOS DO MÊS ATUAL:
 - Horas normais trabalhadas: ${monthSummary.totalRegularHours}h
 - Horas extras (50%): ${monthSummary.totalExtraHours50}h
-- Horas extras (100% - domingos/feriados): ${monthSummary.totalExtraHours100}h
+- Horas extras (100%): ${monthSummary.totalExtraHours100}h
 - Total de horas extras: ${monthSummary.totalExtraHours}h
 
-## REGISTROS DE HOJE (${today})
+REGISTROS DE HOJE (${today}):
 ${todayRecords.length === 0
-  ? '- Nenhum registro de ponto hoje ainda.'
-  : todayRecords.map(r => `- ${r.type === 'entrada' ? '🟢 Entrada' : '🔴 Saída'}: ${r.time}`).join('\n')}
+  ? 'Nenhum registro de ponto hoje ainda.'
+  : todayRecords.map(r => `- ${r.type === 'entrada' ? 'Entrada' : 'Saída'}: ${r.time}`).join('\n')}
 
-## SOLICITAÇÕES
+SOLICITAÇÕES:
 - Pendentes: ${requests.pending}
 - Aprovadas: ${requests.approved}
 
-## REGRAS CLT QUE VOCÊ CONHECE
+REGRAS CLT:
 - Jornada padrão: 8h/dia, 44h/semana (Art. 58 CLT)
-- Tolerância de atraso/saída antecipada: até 10 minutos diários (Art. 58, §1º CLT)
-- Hora extra em dias úteis e sábados: acréscimo mínimo de 50% (Art. 59, §1º CLT)
-- Hora extra em domingos e feriados: acréscimo de 100% (Art. 70 CLT)
-- Hora extra com acordo coletivo: pode variar entre 60% e 80%
-- Intervalo mínimo para refeição: 1h para jornadas acima de 6h (Art. 71 CLT)
-- Hora noturna: das 22h às 5h, com adicional de 20% (Art. 73 CLT)
+- Tolerância: até 10 minutos diários (Art. 58 §1º CLT)
+- Hora extra dias úteis/sábados: 50% (Art. 59 §1º CLT)
+- Hora extra domingos/feriados: 100% (Art. 70 CLT)
+- Adicional noturno 22h-5h: 20% (Art. 73 CLT)
 
-## O QUE VOCÊ PODE FAZER
-- Informar saldo de horas extras do mês atual
-- Explicar regras da CLT de forma simples
-- Orientar sobre como abrir solicitações de compensação ou pagamento
-- Informar status de solicitações pendentes
-- Esclarecer dúvidas sobre o sistema RHIANA
-- Orientar sobre registro de ponto
-
-## O QUE VOCÊ NÃO PODE FAZER
-- Aprovar ou rejeitar solicitações (isso é função do RH)
-- Alterar registros de ponto
-- Acessar dados de outros colaboradores
-- Fornecer informações jurídicas específicas (oriente a consultar advogado trabalhista)
-
-Seja sempre prestativo e objetivo. Responda de forma concisa, sem enrolação.`;
+Seja sempre prestativo e objetivo. Responda de forma concisa em português brasileiro.`;
   }
 }

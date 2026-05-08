@@ -8,7 +8,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 
-@ApiTags('Horas')
+@ApiTags('Hours')
 @ApiBearerAuth('JWT-auth')
 @Controller('hours')
 export class HoursController {
