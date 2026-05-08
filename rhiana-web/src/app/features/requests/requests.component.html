@@ -1,0 +1,191 @@
+<div class="space-y-6">
+
+  <!-- Cabeçalho -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800">Minhas Solicitações</h1>
+      <p class="text-slate-500 text-sm mt-0.5">Gerencie suas solicitações de horas extras</p>
+    </div>
+    <button
+      (click)="showForm.set(!showForm())"
+      class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Nova Solicitação
+    </button>
+  </div>
+
+  <!-- Alertas -->
+  <div *ngIf="success()" class="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-medium">
+    {{ success() }}
+  </div>
+  <div *ngIf="error()" class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-medium">
+    {{ error() }}
+  </div>
+
+  <!-- Formulário -->
+  <div *ngIf="showForm()" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+    <h3 class="font-semibold text-slate-800 mb-4">Nova Solicitação</h3>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Tipo</label>
+        <select
+          [(ngModel)]="form.type"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="compensacao">Compensação</option>
+          <option value="pagamento">Pagamento</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Data de Referência</label>
+        <input
+          type="date"
+          [(ngModel)]="form.referenceDate"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Quantidade de Horas</label>
+        <input
+          type="number"
+          [(ngModel)]="form.hoursAmount"
+          min="0.5"
+          max="24"
+          step="0.5"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Justificativa</label>
+        <input
+          type="text"
+          [(ngModel)]="form.justification"
+          placeholder="Descreva o motivo..."
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+
+    </div>
+
+    <div class="flex gap-3 mt-5">
+      <button
+        (click)="submit()"
+        [disabled]="submitting()"
+        class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60">
+        {{ submitting() ? 'Enviando...' : 'Enviar Solicitação' }}
+      </button>
+      <button
+        (click)="showForm.set(false)"
+        class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors">
+        Cancelar
+      </button>
+    </div>
+  </div>
+
+  <!-- Lista -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100">
+    <div class="px-5 py-4 border-b border-slate-100">
+      <h3 class="font-semibold text-slate-800">Histórico de Solicitações</h3>
+    </div>
+
+    <div class="p-5">
+
+      <!-- Loading -->
+      <div *ngIf="loading()" class="text-center py-8 text-slate-400">
+        <svg class="animate-spin w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+        <p class="text-sm">Carregando...</p>
+      </div>
+
+      <!-- Vazio -->
+      <div *ngIf="!loading() && requests().length === 0" class="text-center py-8 text-slate-400">
+        <svg class="w-10 h-10 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <p class="text-sm">Nenhuma solicitação encontrada</p>
+      </div>
+
+      <!-- Itens -->
+      <div class="space-y-3">
+        <div
+          *ngFor="let req of requests()"
+          class="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
+
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-800 capitalize">{{ req.type }}</p>
+              <p class="text-xs text-slate-400">{{ formatDate(req.referenceDate) }} · {{ req.hoursAmount }}h · {{ req.justification }}</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <span class="px-2.5 py-1 rounded-full text-xs font-medium" [ngClass]="getStatusClass(req.status)">
+              {{ getStatusLabel(req.status) }}
+            </span>
+            <button
+               *ngIf="req.status === 'pendente'"
+               (click)="openCancelModal(req.id)"
+               class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50  rounded-lg transition-colors">
+               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal de confirmação -->
+<div *ngIf="showCancelModal()" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+
+  <!-- Overlay -->
+  <div
+    class="absolute inset-0 bg-black bg-opacity-40 backdrop-blur-sm"
+    (click)="showCancelModal.set(false)">
+  </div>
+
+  <!-- Card do modal -->
+  <div class="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm z-10">
+
+    <!-- Ícone -->
+    <div class="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+      <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+      </svg>
+    </div>
+
+    <h3 class="text-lg font-bold text-slate-800 text-center">Cancelar Solicitação</h3>
+    <p class="text-sm text-slate-500 text-center mt-1 mb-6">
+      Tem certeza que deseja cancelar esta solicitação? Esta ação não pode ser desfeita.
+    </p>
+
+    <div class="flex gap-3">
+      <button
+        (click)="showCancelModal.set(false)"
+        class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors">
+        Voltar
+      </button>
+      <button
+        (click)="confirmCancel()"
+        class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors">
+        Sim, cancelar
+      </button>
+    </div>
+
+  </div>
+</div>
+
+</div>
