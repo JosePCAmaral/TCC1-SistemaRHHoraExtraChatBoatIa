@@ -1,0 +1,41 @@
+<header class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 shrink-0">
+
+  <!-- Esquerda: botão menu + data -->
+  <div class="flex items-center gap-4">
+    <button
+      (click)="toggleSidebar.emit()"
+      class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+
+    <div class="hidden sm:block">
+      <p class="text-xs text-slate-400 capitalize">{{ getCurrentDate() }}</p>
+    </div>
+  </div>
+
+  <!-- Direita: usuário -->
+  <div class="flex items-center gap-3">
+
+    <!-- Badge do perfil -->
+  <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize"
+    [ngClass]="{
+      'bg-purple-100 text-purple-700': authService.currentUser()?.role === 'admin',
+      'bg-blue-100 text-blue-700': authService.currentUser()?.role === 'rh',
+      'bg-green-100 text-green-700': authService.currentUser()?.role === 'colaborador'
+    }">
+    {{ authService.currentUser()?.role }}
+  </span>
+
+    <!-- Avatar + nome -->
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
+        {{ authService.currentUser()?.name?.charAt(0)?.toUpperCase() }}
+      </div>
+      <span class="hidden md:block text-sm font-medium text-slate-700">
+        {{ authService.currentUser()?.name }}
+      </span>
+    </div>
+  </div>
+</header>

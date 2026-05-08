@@ -1,124 +1,176 @@
-<div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
-  <div class="w-full max-w-md">
+<div class="min-h-screen flex bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900">
 
-    <!-- Logo e título -->
-    <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg">
-        <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+  <!-- Formas decorativas de fundo (visíveis em toda tela) -->
+  <div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute top-[-80px] left-[-80px] w-96 h-96 bg-blue-500 opacity-20 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-[-60px] right-[-60px] w-80 h-80 bg-indigo-400 opacity-20 rounded-full blur-3xl"></div>
+    <div class="absolute top-1/2 left-1/4 w-64 h-64 bg-blue-300 opacity-10 rounded-full blur-2xl"></div>
+    <div class="absolute bottom-1/3 right-1/3 w-48 h-48 bg-white opacity-5 rounded-full blur-xl"></div>
+    <div class="absolute inset-0 opacity-10"
+      style="background-image: linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px); background-size: 40px 40px;">
+    </div>
+  </div>
+
+  <!-- LADO ESQUERDO — apenas desktop -->
+  <div class="hidden lg:flex lg:w-1/2 relative items-center justify-center">
+    <div class="relative z-10 text-center px-12">
+      <div class="inline-flex items-center justify-center w-20 h-20 bg-white bg-opacity-20 backdrop-blur-sm rounded-3xl mb-6 shadow-2xl border border-white border-opacity-30">
+        <svg class="w-11 h-11 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
             d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       </div>
-      <h1 class="text-3xl font-bold text-white tracking-wide">RHIANA</h1>
-      <p class="text-blue-300 mt-1 text-sm">Sistema de Gestão de Recursos Humanos</p>
-    </div>
 
-    <!-- Card -->
-    <div class="bg-white rounded-2xl shadow-2xl p-8">
-      <h2 class="text-xl font-semibold text-slate-800 mb-6">Entrar na sua conta</h2>
+      <h1 class="text-5xl font-bold text-white mb-3 tracking-tight">RHIANA</h1>
+      <p class="text-blue-200 text-lg font-light mb-8">Sistema de Gestão de<br/>Recursos Humanos</p>
 
-      <!-- Erro -->
-      @if (error()) {
-        <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-          <svg class="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-          </svg>
-          <span class="text-sm text-red-700">{{ error() }}</span>
-        </div>
-      }
-
-      <form (ngSubmit)="onSubmit()" #loginForm="ngForm" class="space-y-5">
-
-        <!-- Email -->
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">
-            Email
-          </label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
-              </svg>
-            </div>
-            <input
-              type="email"
-              [(ngModel)]="email"
-              name="email"
-              placeholder="seu@email.com"
-              class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-slate-50 focus:bg-white"
-              [disabled]="loading()"
-              autocomplete="email"
-            />
-          </div>
-        </div>
-
-        <!-- Senha -->
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">
-            Senha
-          </label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-              </svg>
-            </div>
-            <input
-              type="password"
-              [(ngModel)]="password"
-              name="password"
-              placeholder="••••••••"
-              class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-slate-50 focus:bg-white"
-              [disabled]="loading()"
-              autocomplete="current-password"
-            />
-          </div>
-        </div>
-
-        <!-- Botão -->
-        <button
-          type="submit"
-          class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed mt-2"
-          [disabled]="loading()"
-        >
-          @if (loading()) {
-            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+      <div class="space-y-3 text-left">
+        <div class="flex items-center gap-3 bg-white bg-opacity-10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white border-opacity-20">
+          <div class="w-8 h-8 bg-blue-400 bg-opacity-40 rounded-lg flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            <span>Entrando...</span>
-          } @else {
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-            </svg>
-            <span>Entrar</span>
-          }
-        </button>
-
-      </form>
-
-      <!-- Credenciais de teste -->
-      <div class="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-100">
-        <p class="text-xs font-semibold text-blue-700 mb-1.5 uppercase tracking-wide">Credenciais de teste</p>
-        <div class="flex items-center gap-2 text-xs text-slate-600">
-          <svg class="w-3.5 h-3.5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
-            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
-          </svg>
-          <span>admin&#64;rhiana.com</span>
+          </div>
+          <span class="text-white text-sm">Controle de jornada conforme CLT</span>
         </div>
-        <div class="flex items-center gap-2 text-xs text-slate-600 mt-1">
-          <svg class="w-3.5 h-3.5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/>
-          </svg>
-          <span>Admin&#64;2025</span>
+
+        <div class="flex items-center gap-3 bg-white bg-opacity-10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white border-opacity-20">
+          <div class="w-8 h-8 bg-blue-400 bg-opacity-40 rounded-lg flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <span class="text-white text-sm">Chatbot com IA integrada</span>
+        </div>
+
+        <div class="flex items-center gap-3 bg-white bg-opacity-10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white border-opacity-20">
+          <div class="w-8 h-8 bg-blue-400 bg-opacity-40 rounded-lg flex items-center justify-center shrink-0">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+          </div>
+          <span class="text-white text-sm">Conformidade com LGPD</span>
         </div>
       </div>
-    </div>
 
-    <!-- Rodapé -->
-    <p class="text-center text-slate-500 text-xs mt-6">
-      RHIANA © 2025 — UTFPR Cornélio Procópio
-    </p>
+      <p class="text-blue-300 text-xs mt-8 opacity-70">UTFPR Cornélio Procópio © 2026</p>
+    </div>
+  </div>
+
+  <!-- LADO DIREITO — formulário -->
+  <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10 relative">
+    <div class="relative z-10 w-full max-w-md">
+
+      <!-- Logo mobile -->
+      <div class="text-center mb-8 lg:hidden">
+        <div class="inline-flex items-center justify-center w-14 h-14 bg-white bg-opacity-20 backdrop-blur-sm rounded-2xl mb-3 shadow-lg border border-white border-opacity-30">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-white">RHIANA</h1>
+        <p class="text-blue-300 text-xs mt-1">Sistema de Gestão de RH</p>
+      </div>
+
+      <!-- Card glassmorphism -->
+      <div class="bg-white bg-opacity-10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white border-opacity-20">
+
+        <!-- Título desktop -->
+        <div class="hidden lg:block mb-7">
+          <h2 class="text-2xl font-bold text-white">Bem-vindo!</h2>
+          <p class="text-blue-200 text-sm mt-1">Entre com suas credenciais para acessar</p>
+        </div>
+
+        <!-- Título mobile -->
+        <div class="lg:hidden mb-6">
+          <h2 class="text-lg font-semibold text-white">Entrar na sua conta</h2>
+        </div>
+
+        <!-- Erro -->
+        @if (error()) {
+          <div class="mb-4 p-3 bg-red-500 bg-opacity-20 border border-red-400 border-opacity-40 rounded-xl flex items-center gap-2">
+            <svg class="w-4 h-4 text-red-300 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+            </svg>
+            <span class="text-sm text-red-200">{{ error() }}</span>
+          </div>
+        }
+
+        <form (ngSubmit)="onSubmit()" #loginForm="ngForm" class="space-y-5">
+
+          <!-- Email -->
+          <div>
+            <label class="block text-sm font-medium text-blue-100 mb-1.5">Email</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <svg class="h-4 w-4 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
+                </svg>
+              </div>
+              <input
+                type="email"
+                [(ngModel)]="email"
+                name="email"
+                placeholder="seu@email.com"
+                class="w-full pl-10 pr-4 py-3 rounded-xl text-sm bg-white bg-opacity-15 border border-white border-opacity-25 text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-opacity-20 transition-all duration-200"
+                [disabled]="loading()"
+                autocomplete="email"
+              />
+            </div>
+          </div>
+
+          <!-- Senha -->
+          <div>
+            <label class="block text-sm font-medium text-blue-100 mb-1.5">Senha</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <svg class="h-4 w-4 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              </div>
+              <input
+                type="password"
+                [(ngModel)]="password"
+                name="password"
+                placeholder="••••••••"
+                class="w-full pl-10 pr-4 py-3 rounded-xl text-sm bg-white bg-opacity-15 border border-white border-opacity-25 text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-opacity-20 transition-all duration-200"
+                [disabled]="loading()"
+                autocomplete="current-password"
+              />
+            </div>
+          </div>
+
+          <!-- Botão -->
+          <button
+            type="submit"
+            class="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-500 hover:bg-blue-400 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-blue-500/30 disabled:opacity-60 disabled:cursor-not-allowed mt-1 border border-blue-400 border-opacity-50"
+            [disabled]="loading()"
+          >
+            @if (loading()) {
+              <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              <span>Entrando...</span>
+            } @else {
+              <span>Entrar</span>
+            }
+          </button>
+
+        </form>
+
+        <!-- Credenciais -->
+        <div class="mt-6 p-3 rounded-xl bg-white bg-opacity-10 border border-white border-opacity-15">
+          <p class="text-xs font-semibold uppercase tracking-wide text-blue-200 mb-1.5">Credenciais de teste</p>
+          <p class="text-xs text-blue-200">📧 admin&#64;rhiana.com</p>
+          <p class="text-xs text-blue-200 mt-0.5">🔑 Admin&#64;2025</p>
+        </div>
+      </div>
+
+      <p class="text-center text-blue-400 text-xs mt-6 lg:hidden">
+        RHIANA © 2026 — UTFPR Cornélio Procópio
+      </p>
+    </div>
   </div>
 </div>
