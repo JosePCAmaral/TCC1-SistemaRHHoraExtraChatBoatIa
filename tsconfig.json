@@ -18,5 +18,5 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false
   },
-  "exclude": ["rhiana-web", "dist"]
+  "exclude": ["node_modules", "dist", "rhiana-web"]
 }
