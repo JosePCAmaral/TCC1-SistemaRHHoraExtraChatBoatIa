@@ -8,9 +8,9 @@ RUN npm install --legacy-peer-deps
 # Copy full project into the image
 COPY . .
 
-# Ensure TypeScript cache is clean and build using tsc directly
-RUN rm -f tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo || true && \
-    ./node_modules/.bin/tsc -p tsconfig.build.json
+# Clean cache and build using TypeScript compiler
+RUN rm -rf dist tsconfig.tsbuildinfo && \
+    ./node_modules/.bin/tsc
 
 EXPOSE 5000
 
