@@ -13,6 +13,33 @@ export class HoursService {
     return this.http.post<HourRecord>(`${this.apiUrl}/clock`, { observation });
   }
 
+  manualRecord(data: {
+    userId: number;
+    date: string;
+    time: string;
+    type: 'entrada' | 'saida';
+    dayType: string;
+    observation?: string;
+  }): Observable<HourRecord> {
+    return this.http.post<HourRecord>(`${this.apiUrl}/manual`, data);
+  }
+
+  updateRecord(id: number, data: any): Observable<HourRecord> {
+    return this.http.patch<HourRecord>(`${this.apiUrl}/${id}`, data);
+  }
+
+  deleteRecord(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${id}`);
+  }
+
+  getAllRecordsByDate(date: string): Observable<HourRecord[]> {
+    return this.http.get<HourRecord[]>(`${this.apiUrl}/all/date?date=${date}`);
+  }
+
+  getRecordsByUserAndDate(userId: number, date: string): Observable<HourRecord[]> {
+    return this.http.get<HourRecord[]>(`${this.apiUrl}/user/${userId}/date?date=${date}`);
+  }
+
   getTodayRecords(): Observable<HourRecord[]> {
     return this.http.get<HourRecord[]>(`${this.apiUrl}/me/today`);
   }

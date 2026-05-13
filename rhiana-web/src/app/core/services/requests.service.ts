@@ -35,4 +35,8 @@ export class RequestsService {
   cancel(id: number): Observable<Request> {
     return this.http.patch<Request>(`${this.apiUrl}/${id}/cancel`, {});
   }
+
+  getRequestWithBalance(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}/balance`);
+  }
 }

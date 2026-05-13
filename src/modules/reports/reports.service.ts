@@ -28,19 +28,40 @@ export class ReportsService {
 
     const requests = await this.requestRepository.find({
       where: { userId },
+      relations: ['reviewer'],
       order: { createdAt: 'DESC' },
     });
 
-    const saidas = records.filter(r => r.type === RecordType.SAIDA);
+    requests.forEach(r => {
+      if (r.reviewer) delete r.reviewer.password;
+    });
 
+    const saidas = records.filter(r => r.type === RecordType.SAIDA);
     const totalRegular = saidas.reduce((sum, r) => sum + Number(r.regularHours), 0);
     const totalExtra50 = saidas.reduce((sum, r) => sum + Number(r.extraHours50), 0);
+    const totalExtra60 = saidas.reduce((sum, r) => sum + Number((r as any).extraHours60 ?? 0), 0);
     const totalExtra100 = saidas.reduce((sum, r) => sum + Number(r.extraHours100), 0);
     const totalNight = saidas.reduce((sum, r) => sum + Number(r.nightHours), 0);
-    const totalExtra = totalExtra50 + totalExtra100;
+    const totalExtra = totalExtra50 + totalExtra60 + totalExtra100;
+    const hourlyRate = Number(user.hourlyRate ?? 0);
 
-    // Agrupa por dia
+    const regularValue = totalRegular * hourlyRate;
+    const extra50Value = totalExtra50 * hourlyRate * 1.5;
+    const extra60Value = totalExtra60 * hourlyRate * 1.6;
+    const extra100Value = totalExtra100 * hourlyRate * 2.0;
+    const nightValue = totalNight * hourlyRate * 0.2;
+    const totalValue = regularValue + extra50Value + extra60Value + extra100Value + nightValue;
+
     const dailySummary = this.groupByDay(records);
+
+    // Totais de solicitações
+    const approvedRequests = requests.filter(r => r.status === RequestStatus.APROVADO);
+    const compensacaoAprovadas = approvedRequests.filter(r => r.type === 'compensacao');
+    const pagamentoAprovados = approvedRequests.filter(r => r.type === 'pagamento');
+
+    const totalHorasCompensadas = compensacaoAprovadas.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
+    const totalHorasPagas = pagamentoAprovados.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
+    const totalValorPago = pagamentoAprovados.reduce((sum, r) => sum + (Number(r.hoursAmount) * hourlyRate * 1.5), 0);
 
     return {
       user: {
@@ -57,23 +78,46 @@ export class ReportsService {
       summary: {
         totalRegularHours: +totalRegular.toFixed(2),
         totalExtraHours50: +totalExtra50.toFixed(2),
+        totalExtraHours60: +totalExtra60.toFixed(2),
         totalExtraHours100: +totalExtra100.toFixed(2),
         totalNightHours: +totalNight.toFixed(2),
         totalExtraHours: +totalExtra.toFixed(2),
-        totalValueExtra: user.hourlyRate
-          ? +(
-              totalExtra50 * Number(user.hourlyRate) * 1.5 +
-              totalExtra100 * Number(user.hourlyRate) * 2.0
-            ).toFixed(2)
-          : null,
+        financialSummary: {
+          regularValue: +regularValue.toFixed(2),
+          extra50Value: +extra50Value.toFixed(2),
+          extra60Value: +extra60Value.toFixed(2),
+          extra100Value: +extra100Value.toFixed(2),
+          nightValue: +nightValue.toFixed(2),
+          totalValue: +totalValue.toFixed(2),
+        },
         workedDays: dailySummary.length,
       },
       requests: {
         total: requests.length,
         pending: requests.filter(r => r.status === RequestStatus.PENDENTE).length,
-        approved: requests.filter(r => r.status === RequestStatus.APROVADO).length,
+        approved: approvedRequests.length,
         rejected: requests.filter(r => r.status === RequestStatus.REJEITADO).length,
+        totals: {
+          totalHorasCompensadas: +totalHorasCompensadas.toFixed(2),
+          totalHorasPagas: +totalHorasPagas.toFixed(2),
+          totalValorPago: +totalValorPago.toFixed(2),
+        },
       },
+      requestsList: requests.map(r => ({
+        id: r.id,
+        type: r.type,
+        status: r.status,
+        referenceDate: r.referenceDate,
+        hoursAmount: r.hoursAmount,
+        justification: r.justification,
+        reviewerComment: r.reviewerComment,
+        reviewedAt: r.reviewedAt,
+        createdAt: r.createdAt,
+        reviewer: r.reviewer ? { name: r.reviewer.name } : null,
+        estimatedValue: r.status === RequestStatus.APROVADO
+          ? +(Number(r.hoursAmount) * hourlyRate * 1.5).toFixed(2)
+          : null,
+      })),
       dailySummary,
       records,
     };

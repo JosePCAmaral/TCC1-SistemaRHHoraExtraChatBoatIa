@@ -1,15 +1,21 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Request, RequestStatus } from './entities/request.entity';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { ReviewRequestDto } from './dto/review-request.dto';
+import { User } from '../users/entities/user.entity';
+import { HourRecord, RecordType } from '../hours/entities/hour-record.entity';
 
 @Injectable()
 export class RequestsService {
   constructor(
     @InjectRepository(Request)
     private requestRepository: Repository<Request>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+    @InjectRepository(HourRecord)
+    private hourRecordRepository: Repository<HourRecord>,
   ) {}
 
   async create(userId: number, dto: CreateRequestDto): Promise<Request> {
@@ -97,5 +103,67 @@ export class RequestsService {
     request.reviewedAt = new Date();
 
     return this.requestRepository.save(request);
+  }
+
+  async getRequestWithBalance(requestId: number) {
+    const request = await this.requestRepository.findOne({
+      where: { id: requestId },
+      relations: ['user'],
+    });
+
+    if (!request) throw new NotFoundException('Solicitação não encontrada');
+
+    const user = await this.userRepository.findOne({
+      where: { id: request.userId },
+    });
+
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const records = await this.hourRecordRepository.find({
+      where: { userId: request.userId, date: Between(startDate, endDate) },
+    });
+
+    const saidas = records.filter(r => r.type === RecordType.SAIDA);
+    const totalExtraHours50 = saidas.reduce((sum, r) => sum + Number(r.extraHours50), 0);
+    const totalExtraHours60 = saidas.reduce((sum, r) => sum + Number((r as any).extraHours60 ?? 0), 0);
+    const totalExtraHours100 = saidas.reduce((sum, r) => sum + Number(r.extraHours100), 0);
+    const totalNightHours = saidas.reduce((sum, r) => sum + Number(r.nightHours), 0);
+    const totalExtraHours = totalExtraHours50 + totalExtraHours60 + totalExtraHours100;
+    const hourlyRate = Number(user.hourlyRate ?? 0);
+
+    const extra50Value = totalExtraHours50 * hourlyRate * 1.5;
+    const extra60Value = totalExtraHours60 * hourlyRate * 1.6;
+    const extra100Value = totalExtraHours100 * hourlyRate * 2.0;
+    const nightValue = totalNightHours * hourlyRate * 0.2;
+    const totalValue = extra50Value + extra60Value + extra100Value + nightValue;
+
+    return {
+      request,
+      collaboratorBalance: {
+        name: user.name,
+        department: user.department,
+        position: user.position,
+        hourlyRate: +hourlyRate.toFixed(2),
+        totalExtraHours: +totalExtraHours.toFixed(2),
+        extraHours50: +totalExtraHours50.toFixed(2),
+        extraHours60: +totalExtraHours60.toFixed(2),
+        extraHours100: +totalExtraHours100.toFixed(2),
+        nightHours: +totalNightHours.toFixed(2),
+        financialSummary: {
+          extra50Value: +extra50Value.toFixed(2),
+          extra60Value: +extra60Value.toFixed(2),
+          extra100Value: +extra100Value.toFixed(2),
+          nightValue: +nightValue.toFixed(2),
+          totalValue: +totalValue.toFixed(2),
+        },
+      },
+    };
   }
 }

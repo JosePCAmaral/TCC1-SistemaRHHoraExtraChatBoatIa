@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard, adminGuard, rhGuard } from './core/guards/auth.guard';
+import { ReportsComponent } from './features/reports/reports.component';
+import { TimesheetComponent } from './features/timesheet/timesheet.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
@@ -29,6 +31,16 @@ export const routes: Routes = [
         canActivate: [rhGuard],
         loadComponent: () =>
           import('./features/rh/rh.component').then(m => m.RhComponent),
+      },
+      {
+        path: 'relatorios',
+        canActivate: [rhGuard],
+        component: ReportsComponent,
+      },
+      {
+        path: 'pontos',
+        canActivate: [rhGuard],
+        component: TimesheetComponent,
       },
       {
         path: 'admin',

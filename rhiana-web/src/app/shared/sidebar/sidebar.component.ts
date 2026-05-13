@@ -42,6 +42,18 @@ export class SidebarComponent {
       roles: ['rh', 'admin'],
     },
     {
+      label: 'Relatórios',
+      route: '/relatorios',
+      icon: 'reports',
+      roles: ['rh', 'admin'],
+    },
+    {
+      label: 'Gestão de Pontos',
+      route: '/pontos',
+      icon: 'timesheet',
+      roles: ['rh', 'admin'],
+    },
+    {
       label: 'Administração',
       route: '/admin',
       icon: 'admin',

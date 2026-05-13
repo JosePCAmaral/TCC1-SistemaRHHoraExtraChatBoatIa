@@ -23,6 +23,8 @@ export class RhComponent implements OnInit {
   reviewTarget = signal<Request | null>(null);
   reviewAction = signal<'aprovado' | 'rejeitado'>('aprovado');
   reviewComment = '';
+  collaboratorBalance = signal<any>(null);
+  loadingBalance = signal(false);
 
   activeTab = signal<'pending' | 'all'>('pending');
 
@@ -61,7 +63,20 @@ export class RhComponent implements OnInit {
     this.reviewTarget.set(request);
     this.reviewAction.set(action);
     this.reviewComment = '';
+    this.collaboratorBalance.set(null);
     this.showReviewModal.set(true);
+    this.loadBalance(request.id);
+  }
+
+  loadBalance(requestId: number) {
+    this.loadingBalance.set(true);
+    this.requestsService.getRequestWithBalance(requestId).subscribe({
+      next: (data) => {
+        this.collaboratorBalance.set(data.collaboratorBalance);
+        this.loadingBalance.set(false);
+      },
+      error: () => this.loadingBalance.set(false),
+    });
   }
 
   confirmReview() {
@@ -101,5 +116,12 @@ export class RhComponent implements OnInit {
 
   formatDate(date: string): string {
     return new Date(date).toLocaleDateString('pt-BR');
+  }
+
+  formatCurrency(value: number): string {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
   }
 }

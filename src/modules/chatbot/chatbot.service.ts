@@ -68,8 +68,8 @@ export class ChatbotService {
           messages,
           stream: false,
           options: {
-            temperature: 0.7,
-            num_predict: 512,
+            temperature: 0.3,
+            num_predict: 200,
           },
         }),
       });
@@ -209,6 +209,8 @@ REGRAS CLT:
 - Hora extra domingos/feriados: 100% (Art. 70 CLT)
 - Adicional noturno 22h-5h: 20% (Art. 73 CLT)
 
-Seja sempre prestativo e objetivo. Responda de forma concisa em português brasileiro.`;
+Seja SEMPRE conciso. Máximo 3-4 linhas por resposta.
+Vá direto ao ponto. Não explique o que vai fazer, apenas faça.
+Não faça perguntas desnecessárias. Se tiver os dados, responda diretamente.`;
   }
 }

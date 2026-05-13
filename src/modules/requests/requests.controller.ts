@@ -55,6 +55,13 @@ export class RequestsController {
     return this.requestsService.findOne(id);
   }
 
+  @Get(':id/balance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.RH, UserRole.ADMIN)
+  getRequestWithBalance(@Param('id', ParseIntPipe) id: number) {
+    return this.requestsService.getRequestWithBalance(id);
+  }
+
   @Patch(':id/review')
   @Roles(UserRole.ADMIN, UserRole.RH)
   @ApiOperation({ summary: 'Aprovar ou rejeitar solicitação (RH/Admin)' })

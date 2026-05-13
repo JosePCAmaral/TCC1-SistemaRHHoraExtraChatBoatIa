@@ -54,9 +54,22 @@ export class UsersService {
   }
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {
-    const user = await this.findOne(id);
-    Object.assign(user, updateUserDto);
-    return this.userRepository.save(user);
+    const user = await this.userRepository.findOne({
+      where: { id },
+    });
+
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const { password, ...rest } = updateUserDto as any;
+    Object.assign(user, rest);
+
+    if (password && password.trim() !== '') {
+      user.password = await bcrypt.hash(password, 10);
+    }
+
+    const saved = await this.userRepository.save(user);
+    delete (saved as any).password;
+    return saved;
   }
 
   async changePassword(id: number, dto: ChangePasswordDto): Promise<{ message: string }> {

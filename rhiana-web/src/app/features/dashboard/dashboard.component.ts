@@ -101,4 +101,10 @@ export class DashboardComponent implements OnInit {
     const m = Math.round((hours - h) * 60);
     return `${h}h${m > 0 ? ` ${m}min` : ''}`;
   }
+
+  workedDaysCount(): number {
+    const records = this.monthlySummary()?.records ?? [];
+    const uniqueDays = new Set(records.map(r => r.date));
+    return uniqueDays.size;
+  }
 }
