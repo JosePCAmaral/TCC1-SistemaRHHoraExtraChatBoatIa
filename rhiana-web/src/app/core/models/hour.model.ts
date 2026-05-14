@@ -8,6 +8,7 @@ export interface HourRecord {
   status: string;
   regularHours: number;
   extraHours50: number;
+  extraHours60: number;
   extraHours100: number;
   nightHours: number;
   observation?: string;

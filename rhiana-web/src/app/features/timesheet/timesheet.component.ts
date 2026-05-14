@@ -101,7 +101,16 @@ export class TimesheetComponent implements OnInit {
       return;
     }
 
-    this.hoursService.manualRecord(this.addForm).subscribe({
+    const payload = {
+      userId: Number(this.addForm.userId),
+      date: this.addForm.date,
+      time: this.addForm.time,
+      type: this.addForm.type,
+      dayType: this.addForm.dayType || 'util',
+      observation: this.addForm.observation || undefined,
+    };
+
+    this.hoursService.manualRecord(payload).subscribe({
       next: () => {
         this.showAddModal.set(false);
         this.success.set('✅ Registro adicionado com sucesso!');
@@ -168,6 +177,12 @@ export class TimesheetComponent implements OnInit {
 
   formatDate(date: string): string {
     return new Date(date + 'T00:00:00').toLocaleDateString('pt-BR');
+  }
+
+  formatHours(hours: number): string {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return `${h}h${m > 0 ? ` ${m}min` : ''}`;
   }
 
   getDayTypeLabel(dayType: string): string {

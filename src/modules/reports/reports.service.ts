@@ -45,13 +45,6 @@ export class ReportsService {
     const totalExtra = totalExtra50 + totalExtra60 + totalExtra100;
     const hourlyRate = Number(user.hourlyRate ?? 0);
 
-    const regularValue = totalRegular * hourlyRate;
-    const extra50Value = totalExtra50 * hourlyRate * 1.5;
-    const extra60Value = totalExtra60 * hourlyRate * 1.6;
-    const extra100Value = totalExtra100 * hourlyRate * 2.0;
-    const nightValue = totalNight * hourlyRate * 0.2;
-    const totalValue = regularValue + extra50Value + extra60Value + extra100Value + nightValue;
-
     const dailySummary = this.groupByDay(records);
 
     // Totais de solicitações
@@ -62,6 +55,38 @@ export class ReportsService {
     const totalHorasCompensadas = compensacaoAprovadas.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
     const totalHorasPagas = pagamentoAprovados.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
     const totalValorPago = pagamentoAprovados.reduce((sum, r) => sum + (Number(r.hoursAmount) * hourlyRate * 1.5), 0);
+
+    // Calcular horas deductíveis (abater compensações e pagamentos das extras)
+    // Deduzir prioritariamente de 100%, depois 60%, depois 50%
+    let deductible50 = totalExtra50;
+    let deductible60 = totalExtra60;
+    let deductible100 = totalExtra100;
+
+    const totalDeducted = totalHorasCompensadas + totalHorasPagas;
+    let remaining = totalDeducted;
+
+    if (remaining > 0 && deductible100 > 0) {
+      const toRemove100 = Math.min(remaining, deductible100);
+      deductible100 -= toRemove100;
+      remaining -= toRemove100;
+    }
+    if (remaining > 0 && deductible60 > 0) {
+      const toRemove60 = Math.min(remaining, deductible60);
+      deductible60 -= toRemove60;
+      remaining -= toRemove60;
+    }
+    if (remaining > 0 && deductible50 > 0) {
+      const toRemove50 = Math.min(remaining, deductible50);
+      deductible50 -= toRemove50;
+    }
+
+    const totalExtraDeductible = deductible50 + deductible60 + deductible100;
+    const regularValue = totalRegular * hourlyRate;
+    const extra50Value = deductible50 * hourlyRate * 1.5;
+    const extra60Value = deductible60 * hourlyRate * 1.6;
+    const extra100Value = deductible100 * hourlyRate * 2.0;
+    const nightValue = totalNight * hourlyRate * 0.2;
+    const totalValue = regularValue + extra50Value + extra60Value + extra100Value + nightValue;
 
     return {
       user: {
@@ -77,11 +102,16 @@ export class ReportsService {
       period: { startDate, endDate },
       summary: {
         totalRegularHours: +totalRegular.toFixed(2),
-        totalExtraHours50: +totalExtra50.toFixed(2),
-        totalExtraHours60: +totalExtra60.toFixed(2),
-        totalExtraHours100: +totalExtra100.toFixed(2),
+        totalExtraHours50: +deductible50.toFixed(2),
+        totalExtraHours60: +deductible60.toFixed(2),
+        totalExtraHours100: +deductible100.toFixed(2),
         totalNightHours: +totalNight.toFixed(2),
-        totalExtraHours: +totalExtra.toFixed(2),
+        totalExtraHours: +totalExtraDeductible.toFixed(2),
+        // Campos com totais originais (antes de deduções)
+        originalExtraHours50: +totalExtra50.toFixed(2),
+        originalExtraHours60: +totalExtra60.toFixed(2),
+        originalExtraHours100: +totalExtra100.toFixed(2),
+        originalExtraHours: +totalExtra.toFixed(2),
         financialSummary: {
           regularValue: +regularValue.toFixed(2),
           extra50Value: +extra50Value.toFixed(2),
@@ -275,6 +305,7 @@ export class ReportsService {
           records: [],
           totalRegularHours: 0,
           totalExtraHours50: 0,
+          totalExtraHours60: 0,
           totalExtraHours100: 0,
           totalNightHours: 0,
         };
@@ -283,6 +314,7 @@ export class ReportsService {
       if (record.type === RecordType.SAIDA) {
         grouped[record.date].totalRegularHours += Number(record.regularHours);
         grouped[record.date].totalExtraHours50 += Number(record.extraHours50);
+        grouped[record.date].totalExtraHours60 += Number((record as any).extraHours60 ?? 0);
         grouped[record.date].totalExtraHours100 += Number(record.extraHours100);
         grouped[record.date].totalNightHours += Number(record.nightHours);
       }

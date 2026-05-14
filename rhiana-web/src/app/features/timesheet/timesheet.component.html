@@ -104,9 +104,10 @@
         <div class="flex items-center gap-2">
           <!-- Horas calculadas (só saída) -->
           <div *ngIf="record.type === 'saida'" class="text-right mr-3 hidden sm:block">
-            <p class="text-xs text-slate-500">Normais: <span class="font-medium text-slate-700">{{ record.regularHours }}h</span></p>
-            <p *ngIf="record.extraHours50 > 0" class="text-xs text-orange-600">+{{ record.extraHours50 }}h (50%)</p>
-            <p *ngIf="record.extraHours100 > 0" class="text-xs text-red-600">+{{ record.extraHours100 }}h (100%)</p>
+            <p class="text-xs text-slate-500">Normais: <span class="font-medium text-slate-700">{{ formatHours(record.regularHours) }}</span></p>
+            <p *ngIf="record.extraHours50 > 0" class="text-xs text-orange-600">+{{ formatHours(record.extraHours50) }} (50%)</p>
+            <p *ngIf="record.extraHours60 > 0" class="text-xs text-amber-600">+{{ formatHours(record.extraHours60) }} (60%)</p>
+            <p *ngIf="record.extraHours100 > 0" class="text-xs text-red-600">+{{ formatHours(record.extraHours100) }} (100%)</p>
           </div>
 
           <button (click)="openEditModal(record)"
