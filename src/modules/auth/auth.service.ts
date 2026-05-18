@@ -53,6 +53,23 @@ export class AuthService {
     };
   }
 
+  async refreshToken(payload: { sub: number; email: string; role: string; name: string }) {
+    const user = await this.userRepository.findOne({
+      where: { id: payload.sub },
+      select: ['id', 'name', 'email', 'role', 'status'],
+    });
+
+    if (!user || user.status === 'inativo') {
+      throw new UnauthorizedException('Sessão inválida.');
+    }
+
+    const newPayload = { sub: user.id, email: user.email, role: user.role, name: user.name };
+    return {
+      access_token: this.jwtService.sign(newPayload),
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    };
+  }
+
   async validateUser(payload: any): Promise<User | null> {
     return this.userRepository.findOne({ where: { id: payload.sub } });
   }

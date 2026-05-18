@@ -27,3 +27,51 @@
   </div>
   <app-chatbot></app-chatbot>
 </div>
+
+<!-- Modal de aviso de sessão -->
+@if (authService.sessionWarning() === 'expiring') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4 text-center">
+      <div class="flex items-center justify-center w-14 h-14 rounded-full bg-amber-100 mx-auto mb-4">
+        <svg class="w-7 h-7 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-slate-800 mb-2">Sessão expirando</h2>
+      <p class="text-slate-500 mb-1">Sua sessão irá encerrar em</p>
+      <p class="text-5xl font-bold text-amber-500 my-4">{{ authService.sessionCountdown() }}</p>
+      <p class="text-slate-500 mb-6">segundos por inatividade.</p>
+      <div class="flex gap-3">
+        <button
+          (click)="authService.logout('expired')"
+          class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 font-medium transition">
+          Sair agora
+        </button>
+        <button
+          (click)="authService.confirmStillActive()"
+          class="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium transition">
+          Continuar
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (authService.sessionWarning() === 'expired') {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm mx-4 text-center">
+      <div class="flex items-center justify-center w-14 h-14 rounded-full bg-red-100 mx-auto mb-4">
+        <svg class="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <h2 class="text-xl font-bold text-slate-800 mb-2">Sessão expirada</h2>
+      <p class="text-slate-500 mb-6">Você será redirecionado para o login em <span class="font-bold text-red-500">{{ authService.sessionCountdown() }}</span> segundos.</p>
+      <button
+        (click)="authService.logout('expired')"
+        class="w-full px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium transition">
+        Ir para o login
+      </button>
+    </div>
+  </div>
+}

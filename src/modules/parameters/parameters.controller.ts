@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, ParseIntPipe, Query, U
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ParametersService } from './parameters.service';
 import { CreateParameterDto } from './dto/create-parameter.dto';
+import { UpdateParameterDto } from './dto/update-parameter.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -51,7 +52,7 @@ export class ParametersController {
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Atualizar parâmetro (Admin)' })
   @ApiParam({ name: 'id', example: 1 })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: CreateParameterDto) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateParameterDto) {
     return this.parametersService.update(id, dto);
   }
 

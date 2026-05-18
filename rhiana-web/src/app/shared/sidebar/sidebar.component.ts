@@ -59,6 +59,12 @@ export class SidebarComponent {
       icon: 'admin',
       roles: ['admin'],
     },
+    {
+      label: 'Parâmetros CLT',
+      route: '/parametros',
+      icon: 'parameters',
+      roles: ['admin'],
+    },
   ];
 
   get filteredNavItems(): NavItem[] {

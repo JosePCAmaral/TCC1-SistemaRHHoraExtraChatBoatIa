@@ -34,6 +34,19 @@ services:
     depends_on:
       - db
 
+  web:
+    build:
+      context: ./rhiana-web
+      dockerfile: Dockerfile
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./rhiana-web:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    restart: unless-stopped
+
   ollama:
     image: ollama/ollama:latest
     ports:
