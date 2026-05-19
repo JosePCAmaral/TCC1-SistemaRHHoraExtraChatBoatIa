@@ -173,7 +173,6 @@ export class ProfileComponent implements OnInit {
     this.clearMessages();
 
     this.usersService.changePassword(
-      this.user()!.id,
       this.passwordForm.currentPassword,
       this.passwordForm.newPassword
     ).subscribe({

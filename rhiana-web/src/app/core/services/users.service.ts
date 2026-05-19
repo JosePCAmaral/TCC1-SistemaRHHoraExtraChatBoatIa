@@ -29,8 +29,8 @@ export class UsersService {
     return this.http.patch<User>(`${this.apiUrl}/${id}/toggle-status`, {});
   }
 
-  changePassword(id: number, currentPassword: string, newPassword: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/${id}/change-password`, {
+  changePassword(currentPassword: string, newPassword: string): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/me/password`, {
       currentPassword,
       newPassword,
     });
