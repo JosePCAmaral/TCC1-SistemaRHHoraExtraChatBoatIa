@@ -22,10 +22,6 @@ export class ChatbotService {
     });
   }
 
-  getHistory(sessionId: string): Observable<ChatMessage[]> {
-    return this.http.get<ChatMessage[]>(`${this.apiUrl}/history/${sessionId}`);
-  }
-
   clearSession(): Observable<any> {
     if (!this.currentSessionId) return new Observable();
     return this.http.delete(`${this.apiUrl}/session/${this.currentSessionId}`);

@@ -1,41 +1,104 @@
-<header class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 shrink-0">
+<header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4 shrink-0">
 
   <!-- Esquerda: botão menu + data -->
   <div class="flex items-center gap-4">
     <button
       (click)="toggleSidebar.emit()"
-      class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors">
+      class="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
       </svg>
     </button>
 
     <div class="hidden sm:block">
-      <p class="text-xs text-slate-400 capitalize">{{ getCurrentDate() }}</p>
+      <p class="text-xs text-slate-400 dark:text-slate-500 capitalize">{{ getCurrentDate() }}</p>
     </div>
   </div>
 
-  <!-- Direita: usuário -->
-  <div class="flex items-center gap-3">
+  <!-- Direita: usuário + menu -->
+  <div class="flex items-center gap-3 relative">
 
     <!-- Badge do perfil -->
-  <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize"
-    [ngClass]="{
-      'bg-purple-100 text-purple-700': authService.currentUser()?.role === 'admin',
-      'bg-blue-100 text-blue-700': authService.currentUser()?.role === 'rh',
-      'bg-green-100 text-green-700': authService.currentUser()?.role === 'colaborador'
-    }">
-    {{ authService.currentUser()?.role }}
-  </span>
+    <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize"
+      [ngClass]="{
+        'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300': authService.currentUser()?.role === 'admin',
+        'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300': authService.currentUser()?.role === 'rh',
+        'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300': authService.currentUser()?.role === 'colaborador'
+      }">
+      {{ authService.currentUser()?.role }}
+    </span>
 
-    <!-- Avatar + nome -->
-    <div class="flex items-center gap-2.5">
-      <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
+    <!-- Avatar + menu trigger -->
+    <button
+      (click)="toggleProfileMenu()"
+      class="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+      <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 cursor-pointer shadow-md">
         {{ authService.currentUser()?.name?.charAt(0)?.toUpperCase() }}
       </div>
-      <span class="hidden md:block text-sm font-medium text-slate-700">
+      <span class="hidden md:block text-sm font-medium text-slate-700 dark:text-slate-300">
         {{ authService.currentUser()?.name }}
       </span>
-    </div>
+    </button>
+
+    <!-- Dropdown Menu -->
+    @if (showProfileMenu()) {
+      <div class="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+        <!-- Header -->
+        <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-700">
+          <p class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{ authService.currentUser()?.name }}</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">{{ authService.currentUser()?.email }}</p>
+        </div>
+
+        <!-- Menu Items -->
+        <div class="py-1">
+          <!-- Meu Perfil -->
+          <button
+            (click)="goToProfile()"
+            class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left text-sm text-slate-700 dark:text-slate-300">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Meu Perfil
+          </button>
+
+          <!-- Divider -->
+          <div class="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
+
+          <!-- Dark Mode Toggle -->
+          <button
+            (click)="themeService.toggleDarkMode()"
+            class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left text-sm text-slate-700 dark:text-slate-300">
+            @if (themeService.isDarkMode()) {
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 18a6 6 0 100-12 6 6 0 000 12zM12 2v4m0 12v4m10-10h-4M4 12H0M19.07 4.93l-2.83 2.83M7.76 16.24l-2.83 2.83M19.07 19.07l-2.83-2.83M7.76 7.76L4.93 4.93"/>
+              </svg>
+              Modo Claro
+            } @else {
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+              </svg>
+              Modo Escuro
+            }
+          </button>
+
+          <!-- Divider -->
+          <div class="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
+
+          <!-- Logout -->
+          <button
+            (click)="logout()"
+            class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-900 transition-colors text-left text-sm text-red-600 dark:text-red-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            </svg>
+            Sair
+          </button>
+        </div>
+      </div>
+
+      <!-- Overlay para fechar menu -->
+      <div (click)="closeMenu()" class="fixed inset-0 z-40"></div>
+    }
+
   </div>
 </header>

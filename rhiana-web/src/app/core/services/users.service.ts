@@ -9,16 +9,8 @@ export class UsersService {
 
   constructor(private http: HttpClient) {}
 
-  getMe(): Observable<User> {
-    return this.http.get<User>(`${this.apiUrl}/me`);
-  }
-
   getAll(): Observable<User[]> {
     return this.http.get<User[]>(this.apiUrl);
-  }
-
-  getById(id: number): Observable<User> {
-    return this.http.get<User>(`${this.apiUrl}/${id}`);
   }
 
   create(data: any): Observable<User> {
@@ -31,9 +23,5 @@ export class UsersService {
 
   toggleStatus(id: number): Observable<User> {
     return this.http.patch<User>(`${this.apiUrl}/${id}/toggle-status`, {});
-  }
-
-  delete(id: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/${id}`);
   }
 }

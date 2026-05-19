@@ -37,10 +37,6 @@ export class ParametersService {
     return this.http.get<Parameter[]>(this.apiUrl);
   }
 
-  getByType(type: string): Observable<Parameter[]> {
-    return this.http.get<Parameter[]>(`${this.apiUrl}/type/${type}`);
-  }
-
   create(dto: CreateParameterDto): Observable<Parameter> {
     return this.http.post<Parameter>(this.apiUrl, dto);
   }
