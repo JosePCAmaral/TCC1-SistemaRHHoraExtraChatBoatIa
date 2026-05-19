@@ -44,18 +44,33 @@ export class ProfileComponent implements OnInit {
   loadProfile() {
     const currentUser = this.authService.currentUser();
     if (currentUser) {
-      this.user.set(currentUser);
-      this.formData = {
-        name: currentUser.name,
-        email: currentUser.email,
-        phone: currentUser.phone || '',
-        cpf: currentUser.cpf || '',
-        department: currentUser.department || '',
-        position: currentUser.position || '',
-        workStartTime: currentUser.workStartTime || '08:00',
-        workEndTime: currentUser.workEndTime || '17:00',
-        hourlyRate: currentUser.hourlyRate || 0,
-      };
+      this.loading.set(true);
+      // Buscar dados completos do usuário
+      this.usersService.getAll().subscribe({
+        next: (users) => {
+          const fullUser = users.find(u => u.id === currentUser.id);
+          if (fullUser) {
+            this.user.set(fullUser);
+            this.authService.currentUser.set(fullUser);
+            this.formData = {
+              name: fullUser.name,
+              email: fullUser.email,
+              phone: fullUser.phone || '',
+              cpf: fullUser.cpf || '',
+              department: fullUser.department || '',
+              position: fullUser.position || '',
+              workStartTime: fullUser.workStartTime || '08:00',
+              workEndTime: fullUser.workEndTime || '17:00',
+              hourlyRate: fullUser.hourlyRate || 0,
+            };
+          }
+          this.loading.set(false);
+        },
+        error: () => {
+          this.loading.set(false);
+          this.error.set('Erro ao carregar dados do perfil.');
+        },
+      });
     }
   }
 

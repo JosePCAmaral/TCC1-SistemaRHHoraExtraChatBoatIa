@@ -26,12 +26,13 @@ export class AdminComponent implements OnInit {
     email: '',
     password: '',
     role: 'colaborador' as 'colaborador' | 'rh' | 'admin',
+    cpf: '',
     department: '',
     position: '',
     phone: '',
     workStartTime: '08:00',
     workEndTime: '17:00',
-    hourlyRate: 20,
+    hourlyRate: 0,
   };
 
   constructor(private usersService: UsersService) {}
@@ -58,12 +59,13 @@ export class AdminComponent implements OnInit {
       email: '',
       password: '',
       role: 'colaborador',
+      cpf: '',
       department: '',
       position: '',
       phone: '',
       workStartTime: '08:00',
       workEndTime: '17:00',
-      hourlyRate: 20,
+      hourlyRate: 0,
     };
     this.showUserModal.set(true);
   }
@@ -75,12 +77,13 @@ export class AdminComponent implements OnInit {
       email: user.email,
       password: '',
       role: user.role,
+      cpf: user.cpf ?? '',
       department: user.department ?? '',
       position: user.position ?? '',
       phone: user.phone ?? '',
       workStartTime: user.workStartTime ?? '08:00',
       workEndTime: user.workEndTime ?? '17:00',
-      hourlyRate: user.hourlyRate ?? 20,
+      hourlyRate: user.hourlyRate ?? 0,
     };
     this.showUserModal.set(true);
   }
@@ -93,6 +96,7 @@ export class AdminComponent implements OnInit {
         name: this.userForm.name,
         email: this.userForm.email,
         role: this.userForm.role,
+        cpf: this.userForm.cpf,
         department: this.userForm.department,
         position: this.userForm.position,
         phone: this.userForm.phone,

@@ -3,3 +3,77 @@
 @tailwind utilities;
 
 /* You can add global styles to this file, and also import other style files */
+
+/* Dark Mode Styles */
+@layer base {
+  .dark input[type='text'],
+  .dark input[type='email'],
+  .dark input[type='password'],
+  .dark input[type='number'],
+  .dark input[type='tel'],
+  .dark input[type='date'],
+  .dark input[type='time'],
+  .dark textarea,
+  .dark select {
+    @apply bg-slate-700 text-slate-100 border-slate-600;
+  }
+
+  .dark input::placeholder {
+    @apply text-slate-400;
+  }
+}
+
+/* Apply dark mode to common components */
+@layer utilities {
+  .dark .bg-white {
+    @apply bg-slate-800;
+  }
+
+  .dark .border-slate-200 {
+    @apply border-slate-700;
+  }
+
+  .dark .text-slate-700 {
+    @apply text-slate-100;
+  }
+
+  .dark .text-slate-800 {
+    @apply text-slate-100;
+  }
+
+  .dark .text-slate-600 {
+    @apply text-slate-300;
+  }
+
+  .dark .text-slate-500 {
+    @apply text-slate-400;
+  }
+
+  .dark .bg-slate-50 {
+    @apply bg-slate-900;
+  }
+
+  .dark .bg-slate-100 {
+    @apply bg-slate-700;
+  }
+
+  .dark .bg-blue-50 {
+    @apply bg-slate-800;
+  }
+
+  .dark .bg-green-50 {
+    @apply bg-slate-800;
+  }
+
+  .dark .bg-red-50 {
+    @apply bg-slate-800;
+  }
+
+  .dark .bg-amber-50 {
+    @apply bg-slate-800;
+  }
+
+  .dark .shadow-sm {
+    @apply shadow-lg;
+  }
+}

@@ -4,6 +4,9 @@ module.exports = {
   content: [
     "./src/**/*.{html,ts,css}",
   ],
+  safelist: [
+    { pattern: /^dark:/ },
+  ],
   theme: {
     extend: {
       colors: {
