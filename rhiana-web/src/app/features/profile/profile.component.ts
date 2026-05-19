@@ -32,6 +32,15 @@ export class ProfileComponent implements OnInit {
     hourlyRate: 0 as number | undefined,
   };
 
+  passwordForm = {
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  };
+
+  showPasswordModal = signal(false);
+  changingPassword = signal(false);
+
   constructor(
     private authService: AuthService,
     private usersService: UsersService,
@@ -47,34 +56,40 @@ export class ProfileComponent implements OnInit {
     const currentUser = this.authService.currentUser();
     if (currentUser) {
       this.loading.set(true);
-      // Buscar dados completos do usuário logado
-      this.usersService.getAll().subscribe({
-        next: (users) => {
-          const fullUser = users.find(u => u.id === currentUser.id);
-          if (fullUser) {
-            this.user.set(fullUser);
-            this.authService.currentUser.set(fullUser);
-            this.formData = {
-              name: fullUser.name,
-              email: fullUser.email,
-              phone: fullUser.phone || '',
-              cpf: fullUser.cpf || '',
-              department: fullUser.department || '',
-              position: fullUser.position || '',
-              workStartTime: fullUser.workStartTime || '08:00',
-              workEndTime: fullUser.workEndTime || '17:00',
-              hourlyRate: fullUser.hourlyRate || 0,
-            };
-          }
-          this.loading.set(false);
-        },
-        error: (err) => {
-          console.error('Erro ao carregar perfil:', err);
-          this.loading.set(false);
-          this.error.set('Erro ao carregar dados do perfil.');
-        },
-      });
+
+      if (this.isUserAdmin()) {
+        // Admin: fetch all users and find self
+        this.usersService.getAll().subscribe({
+          next: (users) => this.populateUserData(users.find(u => u.id === currentUser.id)),
+          error: () => this.populateUserData(currentUser),
+        });
+      } else {
+        // Non-admin: fetch own profile
+        this.usersService.getMe().subscribe({
+          next: (user) => this.populateUserData(user),
+          error: () => this.populateUserData(currentUser),
+        });
+      }
     }
+  }
+
+  private populateUserData(fullUser: User | undefined) {
+    if (fullUser) {
+      this.user.set(fullUser);
+      this.authService.currentUser.set(fullUser);
+      this.formData = {
+        name: fullUser.name,
+        email: fullUser.email,
+        phone: fullUser.phone || '',
+        cpf: fullUser.cpf || '',
+        department: fullUser.department || '',
+        position: fullUser.position || '',
+        workStartTime: fullUser.workStartTime || '08:00',
+        workEndTime: fullUser.workEndTime || '17:00',
+        hourlyRate: fullUser.hourlyRate || 0,
+      };
+    }
+    this.loading.set(false);
   }
 
   startEdit() {
@@ -127,6 +142,53 @@ export class ProfileComponent implements OnInit {
 
   logout() {
     this.authService.logout('logout');
+  }
+
+  openPasswordModal() {
+    this.passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+    this.showPasswordModal.set(true);
+    this.clearMessages();
+  }
+
+  closePasswordModal() {
+    this.showPasswordModal.set(false);
+    this.passwordForm = { currentPassword: '', newPassword: '', confirmPassword: '' };
+  }
+
+  changePassword() {
+    if (!this.passwordForm.currentPassword?.trim()) {
+      this.error.set('Digite sua senha atual.');
+      return;
+    }
+    if (!this.passwordForm.newPassword?.trim() || this.passwordForm.newPassword.length < 6) {
+      this.error.set('Nova senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (this.passwordForm.newPassword !== this.passwordForm.confirmPassword) {
+      this.error.set('As senhas não coincidem.');
+      return;
+    }
+
+    this.changingPassword.set(true);
+    this.clearMessages();
+
+    this.usersService.changePassword(
+      this.user()!.id,
+      this.passwordForm.currentPassword,
+      this.passwordForm.newPassword
+    ).subscribe({
+      next: () => {
+        this.success.set('Senha alterada com sucesso.');
+        this.closePasswordModal();
+        this.changingPassword.set(false);
+        setTimeout(() => this.success.set(''), 4000);
+      },
+      error: (err) => {
+        this.error.set(err.error?.message ?? 'Erro ao alterar senha. Tente novamente.');
+        this.changingPassword.set(false);
+        setTimeout(() => this.error.set(''), 4000);
+      },
+    });
   }
 
   private clearMessages() {

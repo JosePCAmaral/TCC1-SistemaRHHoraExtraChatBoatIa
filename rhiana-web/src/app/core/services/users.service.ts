@@ -9,6 +9,10 @@ export class UsersService {
 
   constructor(private http: HttpClient) {}
 
+  getMe(): Observable<User> {
+    return this.http.get<User>(`${this.apiUrl}/me`);
+  }
+
   getAll(): Observable<User[]> {
     return this.http.get<User[]>(this.apiUrl);
   }
@@ -23,5 +27,12 @@ export class UsersService {
 
   toggleStatus(id: number): Observable<User> {
     return this.http.patch<User>(`${this.apiUrl}/${id}/toggle-status`, {});
+  }
+
+  changePassword(id: number, currentPassword: string, newPassword: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${id}/change-password`, {
+      currentPassword,
+      newPassword,
+    });
   }
 }
