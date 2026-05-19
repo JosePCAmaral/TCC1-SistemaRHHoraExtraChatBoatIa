@@ -18,6 +18,7 @@ export class ProfileComponent implements OnInit {
   loading = signal(false);
   success = signal('');
   error = signal('');
+  isUserAdmin = signal(false);
 
   formData = {
     name: '',
@@ -38,6 +39,7 @@ export class ProfileComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.isUserAdmin.set(this.authService.isAdmin());
     this.loadProfile();
   }
 
@@ -45,7 +47,7 @@ export class ProfileComponent implements OnInit {
     const currentUser = this.authService.currentUser();
     if (currentUser) {
       this.loading.set(true);
-      // Buscar dados completos do usuário
+      // Buscar dados completos do usuário logado
       this.usersService.getAll().subscribe({
         next: (users) => {
           const fullUser = users.find(u => u.id === currentUser.id);
@@ -66,7 +68,8 @@ export class ProfileComponent implements OnInit {
           }
           this.loading.set(false);
         },
-        error: () => {
+        error: (err) => {
+          console.error('Erro ao carregar perfil:', err);
           this.loading.set(false);
           this.error.set('Erro ao carregar dados do perfil.');
         },
@@ -90,15 +93,20 @@ export class ProfileComponent implements OnInit {
     this.loading.set(true);
     this.clearMessages();
 
-    const updateData = {
+    // Montar dados baseado no role do usuário
+    const updateData: any = {
       name: this.formData.name,
       phone: this.formData.phone,
-      department: this.formData.department,
-      position: this.formData.position,
-      workStartTime: this.formData.workStartTime,
-      workEndTime: this.formData.workEndTime,
-      hourlyRate: this.formData.hourlyRate,
     };
+
+    // Apenas admin pode editar estes campos
+    if (this.isUserAdmin()) {
+      updateData.department = this.formData.department;
+      updateData.position = this.formData.position;
+      updateData.workStartTime = this.formData.workStartTime;
+      updateData.workEndTime = this.formData.workEndTime;
+      updateData.hourlyRate = this.formData.hourlyRate;
+    }
 
     this.usersService.update(this.user()!.id, updateData).subscribe({
       next: (updatedUser) => {
