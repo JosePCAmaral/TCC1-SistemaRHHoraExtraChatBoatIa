@@ -6,9 +6,10 @@ import { Request } from './entities/request.entity';
 import { User } from '../users/entities/user.entity';
 import { HourRecord } from '../hours/entities/hour-record.entity';
 import { ParametersModule } from '../parameters/parameters.module';
+import { PeriodosModule } from '../periodos/periodos.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Request, User, HourRecord]), ParametersModule],
+  imports: [TypeOrmModule.forFeature([Request, User, HourRecord]), ParametersModule, PeriodosModule],
   providers: [RequestsService],
   controllers: [RequestsController],
   exports: [RequestsService],

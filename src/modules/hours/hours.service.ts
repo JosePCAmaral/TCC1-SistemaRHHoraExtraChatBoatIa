@@ -9,6 +9,7 @@ import { ManualRecordDto } from './dto/manual-record.dto';
 import { NetworkService } from '../network/network.service';
 import { ParametersService } from '../parameters/parameters.service';
 import { PeriodosService } from '../periodos/periodos.service';
+import { FeriadosService } from '../feriados/feriados.service';
 
 const DEFAULT_TOLERANCE_MINUTES = 10;
 const DEFAULT_EXTRA_NORMAL_PERCENT = 50;
@@ -31,7 +32,19 @@ export class HoursService {
     private parametersService: ParametersService,
     @Inject(forwardRef(() => PeriodosService))
     private periodosService: PeriodosService,
+    private feriadosService: FeriadosService,
   ) {}
+
+  // Determina o tipo do dia automaticamente: feriado > dia da semana > UTIL
+  private async resolveDayType(date: string, empresaId: number, provided?: DayType): Promise<DayType> {
+    const isHoliday = await this.feriadosService.isHoliday(date, empresaId);
+    if (isHoliday) return DayType.FERIADO;
+    if (provided && provided !== DayType.UTIL) return provided;
+    const dow = new Date(date + 'T12:00:00').getDay();
+    if (dow === 0) return DayType.DOMINGO;
+    if (dow === 6) return DayType.SABADO;
+    return DayType.UTIL;
+  }
 
   // Registra entrada ou saída automaticamente
   async clockIn(userId: number, dto: ClockInDto, ipAddress: string): Promise<HourRecord> {
@@ -57,31 +70,18 @@ export class HoursService {
       ? RecordType.ENTRADA
       : RecordType.SAIDA;
 
+    const dayType = await this.resolveDayType(date, user.empresaId, dto.dayType);
+
     const record = this.hourRecordRepository.create({
       userId,
       date,
       time,
       type,
-      dayType: dto.dayType ?? DayType.UTIL,
+      dayType,
       observation: dto.observation,
       ipAddress,
       isManual: false,
     });
-
-    // Se for saída, calcula horas
-    if (type === RecordType.SAIDA && lastRecord) {
-      const calculated = await this.calculateHours(
-        lastRecord.time,
-        time,
-        dto.dayType ?? DayType.UTIL,
-        user,
-      );
-      record.regularHours = calculated.regularHours;
-      record.extraHours50 = calculated.extraHours50;
-      record.extraHours60 = calculated.extraHours60;
-      record.extraHours100 = calculated.extraHours100;
-      record.nightHours = calculated.nightHours;
-    }
 
     const saved = await this.hourRecordRepository.save(record);
 
@@ -104,10 +104,11 @@ export class HoursService {
     const type = Object.values(RecordType).includes(dto.type as RecordType)
       ? (dto.type as RecordType)
       : RecordType.ENTRADA;
-    
-    const dayType = Object.values(DayType).includes(dto.dayType as DayType)
+
+    const providedDayType = Object.values(DayType).includes(dto.dayType as DayType)
       ? (dto.dayType as DayType)
-      : DayType.UTIL;
+      : undefined;
+    const dayType = await this.resolveDayType(dto.date, user.empresaId, providedDayType);
 
     const record = this.hourRecordRepository.create({
       userId: dto.userId,
@@ -117,37 +118,12 @@ export class HoursService {
       dayType,
       observation: dto.observation,
       isManual: true,
-      status: RecordStatus.PENDENTE,
+      status: RecordStatus.APROVADO,
     });
-
-    if (type === RecordType.SAIDA) {
-      const lastEntry = await this.hourRecordRepository.findOne({
-        where: { userId: dto.userId, date: dto.date, type: RecordType.ENTRADA },
-        order: { createdAt: 'DESC' },
-      });
-
-      if (lastEntry) {
-        const calculated = await this.calculateHours(
-          lastEntry.time,
-          dto.time,
-          dayType,
-          user,
-        );
-        record.regularHours = calculated.regularHours;
-        record.extraHours50 = calculated.extraHours50;
-        record.extraHours60 = calculated.extraHours60;
-        record.extraHours100 = calculated.extraHours100;
-        record.nightHours = calculated.nightHours;
-      }
-    }
 
     const saved = await this.hourRecordRepository.save(record);
 
-    // Recalcula todas as horas do dia considerando todos os pares
-    const userEntity = await this.userRepository.findOne({ where: { id: dto.userId } });
-    if (userEntity) {
-      await this.recalculateDayRecords(dto.userId, dto.date, userEntity);
-    }
+    await this.recalculateDayRecords(dto.userId, dto.date, user);
 
     return saved;
   }
@@ -338,65 +314,6 @@ export class HoursService {
     return { message: 'Registro removido com sucesso' };
   }
 
-  // Calcula horas trabalhadas, extras e noturnas
-  private async calculateHours(entryTime: string, exitTime: string, dayType: DayType, user: User) {
-    const [entryH, entryM] = entryTime.split(':').map(Number);
-    const [exitH, exitM] = exitTime.split(':').map(Number);
-
-    const entryMinutes = entryH * 60 + entryM;
-    let exitMinutes = exitH * 60 + exitM;
-
-    if (exitMinutes < entryMinutes) {
-      exitMinutes += 24 * 60;
-    }
-
-    const totalMinutes = exitMinutes - entryMinutes;
-
-    if (totalMinutes <= 0) {
-      return { regularHours: 0, extraHours50: 0, extraHours60: 0, extraHours100: 0, nightHours: 0 };
-    }
-
-    const cltRules = await this.getCltRules();
-
-    let expectedMinutes = cltRules.dailyHours * 60;
-    if (user.workStartTime && user.workEndTime) {
-      const startParts = user.workStartTime.split(':').map(Number);
-      const endParts = user.workEndTime.split(':').map(Number);
-      const startTotalMinutes = startParts[0] * 60 + startParts[1];
-      const endTotalMinutes = endParts[0] * 60 + endParts[1];
-      const grossWorkMinutes = endTotalMinutes - startTotalMinutes;
-      const lunchBreakMinutes = grossWorkMinutes >= 360 ? cltRules.lunchBreakMinutes : 0;
-      expectedMinutes = grossWorkMinutes - lunchBreakMinutes;
-    }
-
-    const rawExtra = totalMinutes - expectedMinutes;
-    const extraMinutes = rawExtra > cltRules.toleranceMinutes ? rawExtra : 0;
-    const regularMinutes = Math.min(totalMinutes, expectedMinutes);
-
-    let nightMinutes = 0;
-    for (let m = entryMinutes; m < exitMinutes; m++) {
-      const hour = Math.floor(m / 60) % 24;
-      if (hour >= cltRules.nightStart || hour < cltRules.nightEnd) {
-        nightMinutes++;
-      }
-    }
-
-    const isDomingoOuFeriado = dayType === DayType.DOMINGO || dayType === DayType.FERIADO;
-    const isSabado = dayType === DayType.SABADO;
-    const useAcordoColetivo = isSabado && cltRules.acordoColetivoMinPercent > 50;
-
-    const firstTierExtraMinutes = Math.min(extraMinutes, 120);
-    const secondTierExtraMinutes = Math.max(0, extraMinutes - 120);
-
-    return {
-      regularHours: +(regularMinutes / 60).toFixed(2),
-      extraHours50: (!isDomingoOuFeriado && !useAcordoColetivo) ? +(firstTierExtraMinutes / 60).toFixed(2) : 0,
-      extraHours60: isDomingoOuFeriado ? 0 : (useAcordoColetivo ? +(extraMinutes / 60).toFixed(2) : +(secondTierExtraMinutes / 60).toFixed(2)),
-      extraHours100: isDomingoOuFeriado ? +(extraMinutes / 60).toFixed(2) : 0,
-      nightHours: +(nightMinutes / 60).toFixed(2),
-    };
-  }
-
   async recalculateDayRecords(userId: number, date: string, user: User): Promise<void> {
     const dayRecords = await this.hourRecordRepository.find({
       where: { userId, date },
@@ -452,8 +369,8 @@ export class HoursService {
     const extraMinutes = rawExtra > cltRules.toleranceMinutes ? rawExtra : 0;
     const regularMinutes = Math.min(totalWorkedMinutes, expectedMinutes);
 
-    // Determina tipo do dia pelo primeiro registro
-    const dayType = dayRecords[0]?.dayType ?? DayType.UTIL;
+    // Determina tipo do dia pela última saída (registro mais confiável)
+    const dayType = saidas[saidas.length - 1]?.dayType ?? DayType.UTIL;
     const isDomingoOuFeriado = dayType === DayType.DOMINGO || dayType === DayType.FERIADO;
     const isSabado = dayType === DayType.SABADO;
     const useAcordoColetivo = isSabado && cltRules.acordoColetivoMinPercent > 50;

@@ -14,6 +14,7 @@ import { ParametersService } from './modules/parameters/parameters.service';
 import { SettingsModule } from './modules/settings/settings.module';
 import { EmpresasModule } from './modules/empresas/empresas.module';
 import { PeriodosModule } from './modules/periodos/periodos.module';
+import { FeriadosModule } from './modules/feriados/feriados.module';
 import { EmpresasService } from './modules/empresas/empresas.service';
 
 @Module({
@@ -45,6 +46,7 @@ import { EmpresasService } from './modules/empresas/empresas.service';
     ParametersModule,
     SettingsModule,
     PeriodosModule,
+    FeriadosModule,
   ],
 })
 export class AppModule implements OnModuleInit {

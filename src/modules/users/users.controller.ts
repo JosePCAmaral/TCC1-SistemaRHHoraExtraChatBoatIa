@@ -18,8 +18,8 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.RH)
-  @ApiOperation({ summary: 'Criar colaborador', description: 'Cria um novo colaborador. Acesso: Super Admin, Admin, RH.' })
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Criar colaborador', description: 'Cria um novo colaborador. Acesso: Super Admin, Admin.' })
   @ApiResponse({ status: 201, description: 'Colaborador criado com sucesso' })
   @ApiResponse({ status: 409, description: 'Email já cadastrado' })
   @ApiResponse({ status: 403, description: 'Sem permissão' })

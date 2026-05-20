@@ -84,34 +84,39 @@ export class RelatorioEmpresaComponent implements OnInit {
 
       autoTable(doc, {
         startY: 46,
-        head: [['Colaborador', 'Depto', 'Cargo', 'Dias Trab.', 'Normais', 'Extra 50%', 'Extra 60%', 'Extra 100%', 'Noturnas', 'Total Extra', 'Valor Extra']],
+        head: [['Colaborador', 'Depto', 'Extra 50%', 'Extra 60%', 'Extra 100%', 'Noturnas', 'Total Extra', 'Valor Extra', 'Req.', 'H. Pagas', 'H. Comp.', 'Valor Pago']],
         body: r.collaborators.map((c: any) => [
           c.name,
           c.department ?? '-',
-          c.position ?? '-',
-          c.workedDays,
-          this.formatHours(c.totalRegularHours),
           this.formatHours(c.totalExtraHours50),
           this.formatHours(c.totalExtraHours60),
           this.formatHours(c.totalExtraHours100),
           this.formatHours(c.totalNightHours),
           this.formatHours(c.totalExtraHours),
           c.totalValueExtra != null ? this.formatCurrency(c.totalValueExtra) : '-',
+          c.requests?.total ?? 0,
+          this.formatHours(c.requests?.horasPagas ?? 0),
+          this.formatHours(c.requests?.horasCompensadas ?? 0),
+          c.requests?.valorPago != null ? this.formatCurrency(c.requests.valorPago) : '-',
         ]),
         foot: [[
-          'TOTAL', '', '', '',
-          this.formatHours(r.collaborators.reduce((s: number, c: any) => s + c.totalRegularHours, 0)),
+          'TOTAL', '',
           this.formatHours(r.collaborators.reduce((s: number, c: any) => s + c.totalExtraHours50, 0)),
           this.formatHours(r.collaborators.reduce((s: number, c: any) => s + c.totalExtraHours60, 0)),
           this.formatHours(r.collaborators.reduce((s: number, c: any) => s + c.totalExtraHours100, 0)),
           this.formatHours(r.collaborators.reduce((s: number, c: any) => s + c.totalNightHours, 0)),
           this.formatHours(r.totalExtraHours),
           this.formatCurrency(r.totalExtraValue),
+          r.totalRequerimentos ?? 0,
+          this.formatHours(r.totalHorasPagas ?? 0),
+          this.formatHours(r.totalHorasCompensadas ?? 0),
+          this.formatCurrency(r.totalValorPago ?? 0),
         ]],
         theme: 'striped',
-        headStyles: { fillColor: [30, 64, 175] },
-        footStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontStyle: 'bold' },
-        columnStyles: { 10: { halign: 'right' } },
+        headStyles: { fillColor: [30, 64, 175], fontSize: 8 },
+        bodyStyles: { fontSize: 8 },
+        footStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+        columnStyles: { 7: { halign: 'right' }, 11: { halign: 'right' } },
       });
 
       doc.save(`relatorio_empresa_${this.filters.startDate}.pdf`);
@@ -129,7 +134,7 @@ export class RelatorioEmpresaComponent implements OnInit {
       const XLSX = await import('xlsx');
       const wb = XLSX.utils.book_new();
 
-      const header = ['Colaborador', 'Departamento', 'Cargo', 'Dias Trabalhados', 'Horas Normais', 'Extra 50%', 'Extra 60%', 'Extra 100%', 'Horas Noturnas', 'Total Extra', 'Valor Extra (R$)'];
+      const header = ['Colaborador', 'Departamento', 'Cargo', 'Dias Trab.', 'Normais (h)', 'Extra 50% (h)', 'Extra 60% (h)', 'Extra 100% (h)', 'Noturnas (h)', 'Total Extra (h)', 'Valor Extra (R$)', 'Req. Aprovados', 'H. Pagas', 'H. Compensadas', 'Valor Pago (R$)'];
       const rows = r.collaborators.map((c: any) => [
         c.name,
         c.department ?? '-',
@@ -141,7 +146,11 @@ export class RelatorioEmpresaComponent implements OnInit {
         c.totalExtraHours100,
         c.totalNightHours,
         c.totalExtraHours,
-        c.totalValueExtra ?? '-',
+        c.totalValueExtra ?? '',
+        c.requests?.total ?? 0,
+        c.requests?.horasPagas ?? 0,
+        c.requests?.horasCompensadas ?? 0,
+        c.requests?.valorPago ?? '',
       ]);
 
       const ws = XLSX.utils.aoa_to_sheet([
@@ -160,6 +169,10 @@ export class RelatorioEmpresaComponent implements OnInit {
           r.collaborators.reduce((s: number, c: any) => s + c.totalNightHours, 0),
           r.totalExtraHours,
           r.totalExtraValue,
+          r.totalRequerimentos ?? 0,
+          r.totalHorasPagas ?? 0,
+          r.totalHorasCompensadas ?? 0,
+          r.totalValorPago ?? 0,
         ],
       ]);
       XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
@@ -203,6 +216,10 @@ export class RelatorioEmpresaComponent implements OnInit {
       night: list.reduce((s, c) => s + (c.totalNightHours ?? 0), 0),
       extra: list.reduce((s, c) => s + (c.totalExtraHours ?? 0), 0),
       value: list.reduce((s, c) => s + (c.totalValueExtra ?? 0), 0),
+      requerimentos: list.reduce((s, c) => s + (c.requests?.total ?? 0), 0),
+      horasPagas: list.reduce((s, c) => s + (c.requests?.horasPagas ?? 0), 0),
+      horasCompensadas: list.reduce((s, c) => s + (c.requests?.horasCompensadas ?? 0), 0),
+      valorPago: list.reduce((s, c) => s + (c.requests?.valorPago ?? 0), 0),
     };
   }
 }

@@ -63,6 +63,12 @@ export const routes: Routes = [
           import('./features/periodos/periodos.component').then(m => m.PeriodosComponent),
       },
       {
+        path: 'feriados',
+        canActivate: [adminGuard, notSuperAdminGuard],
+        loadComponent: () =>
+          import('./features/feriados/feriados.component').then(m => m.FeriadosComponent),
+      },
+      {
         path: 'meu-relatorio',
         canActivate: [notSuperAdminGuard],
         loadComponent: () =>

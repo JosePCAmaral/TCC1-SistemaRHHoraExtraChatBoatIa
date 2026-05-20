@@ -1,0 +1,252 @@
+<div class="space-y-6">
+
+  <!-- Cabeçalho -->
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100">Feriados</h1>
+      <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+        Dias reconhecidos automaticamente com adicional de 100% nos cálculos de horas extras.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button
+        (click)="downloadTemplate()"
+        class="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 text-sm font-medium rounded-xl transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        Template
+      </button>
+      <button
+        (click)="showImportPanel() ? closeImport() : openImport()"
+        class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl transition"
+        [class.bg-amber-100]="showImportPanel()" [class.text-amber-700]="showImportPanel()"
+        [class.bg-slate-100]="!showImportPanel()" [class.text-slate-600]="!showImportPanel()"
+        [class.dark:bg-amber-900]="showImportPanel()" [class.dark:text-amber-300]="showImportPanel()"
+        [class.dark:bg-slate-700]="!showImportPanel()" [class.dark:text-slate-300]="!showImportPanel()">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        Importar JSON
+      </button>
+      <button
+        (click)="openCreate()"
+        class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-medium text-sm transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Novo Feriado
+      </button>
+    </div>
+  </div>
+
+  <!-- Feedback -->
+  @if (error()) {
+    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">{{ error() }}</div>
+  }
+  @if (success()) {
+    <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">{{ success() }}</div>
+  }
+
+  <!-- Painel de importação -->
+  @if (showImportPanel()) {
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 bg-amber-50 dark:bg-amber-950 flex items-center justify-between">
+        <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">Importação em lote de feriados</p>
+        <button (click)="closeImport()" class="p-1 text-amber-500 hover:text-amber-700 rounded-lg">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="p-5 space-y-4">
+        @if (importError()) {
+          <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{{ importError() }}</div>
+        }
+
+        @if (importPreview().length === 0 && !importResult()) {
+          <div
+            class="rounded-xl border-2 border-dashed transition-colors cursor-pointer"
+            [class.border-amber-400]="isDragging()" [class.bg-amber-50]="isDragging()"
+            [class.border-slate-300]="!isDragging()" [class.bg-slate-50]="!isDragging()"
+            (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
+            <label class="flex flex-col items-center justify-center py-8 cursor-pointer gap-2">
+              <svg class="w-8 h-8" [class.text-amber-400]="isDragging()" [class.text-slate-300]="!isDragging()"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+              <p class="text-sm text-slate-500">Arraste o arquivo ou <span class="font-semibold text-amber-600">clique para selecionar</span></p>
+              <p class="text-xs text-slate-400">Formato: <code>[&#123; "date": "YYYY-MM-DD", "name": "..." &#125;]</code></p>
+              <input type="file" accept=".json" class="hidden" (change)="onFileChange($event)"/>
+            </label>
+          </div>
+        }
+
+        @if (importPreview().length > 0) {
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ importPreview().length }} feriado(s) para importar</p>
+              <button (click)="clearImport()" class="text-xs text-slate-400 hover:text-red-500">Limpar</button>
+            </div>
+            <div class="rounded-xl border border-slate-200 dark:border-slate-600 overflow-hidden">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+                  <tr>
+                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">#</th>
+                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Data</th>
+                    <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Nome</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                  @for (item of importPreview(); track item.date; let i = $index) {
+                    <tr>
+                      <td class="px-4 py-2.5 text-xs text-slate-400">{{ i + 1 }}</td>
+                      <td class="px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 font-mono">{{ formatDate(item.date) }}</td>
+                      <td class="px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200">{{ item.name }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <div class="flex gap-2 justify-end">
+              <button (click)="clearImport()"
+                class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition">Cancelar</button>
+              <button (click)="confirmImport()" [disabled]="importLoading()"
+                class="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition">
+                @if (importLoading()) {
+                  <div class="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  Importando...
+                } @else {
+                  Confirmar Importação
+                }
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (importResult()) {
+          <div class="space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-center">
+                <p class="text-2xl font-bold text-green-700">{{ importResult()!.imported }}</p>
+                <p class="text-xs text-green-600 mt-0.5">Importados</p>
+              </div>
+              <div class="rounded-xl px-4 py-3 text-center border"
+                [class.bg-red-50]="importResult()!.errors.length > 0"
+                [class.border-red-200]="importResult()!.errors.length > 0"
+                [class.bg-slate-50]="importResult()!.errors.length === 0"
+                [class.border-slate-200]="importResult()!.errors.length === 0">
+                <p class="text-2xl font-bold"
+                  [class.text-red-700]="importResult()!.errors.length > 0"
+                  [class.text-slate-400]="importResult()!.errors.length === 0">{{ importResult()!.errors.length }}</p>
+                <p class="text-xs mt-0.5"
+                  [class.text-red-600]="importResult()!.errors.length > 0"
+                  [class.text-slate-400]="importResult()!.errors.length === 0">Erros</p>
+              </div>
+            </div>
+            @if (importResult()!.errors.length > 0) {
+              <div class="rounded-xl border border-red-200 overflow-hidden">
+                @for (e of importResult()!.errors; track e.row) {
+                  <div class="px-4 py-2.5 flex items-center gap-3 border-b border-red-100 last:border-0">
+                    <span class="w-6 h-6 rounded-full bg-red-100 text-red-600 text-xs font-bold flex items-center justify-center shrink-0">{{ e.row }}</span>
+                    <div>
+                      <p class="text-xs font-mono text-slate-700 dark:text-slate-300">{{ formatDate(e.date) }}</p>
+                      <p class="text-xs text-red-500">{{ e.reason }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+            <div class="flex justify-end">
+              <button (click)="closeImport()"
+                class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition">Fechar</button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Formulário inline -->
+  @if (showForm()) {
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+      <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100 mb-4">
+        {{ editingId() ? 'Editar Feriado' : 'Novo Feriado' }}
+      </h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data</label>
+          <input type="date" [(ngModel)]="form.date"
+            class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Descrição</label>
+          <input type="text" [(ngModel)]="form.description" placeholder="Ex: Natal"
+            class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+        </div>
+      </div>
+      <div class="flex gap-3 mt-4">
+        <button (click)="save()" [disabled]="saving()"
+          class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-medium transition">
+          {{ saving() ? 'Salvando...' : 'Salvar' }}
+        </button>
+        <button (click)="cancelForm()"
+          class="border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-5 py-2 rounded-xl text-sm font-medium transition">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Tabela -->
+  <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+    @if (loading()) {
+      <div class="p-8 text-center text-slate-400 text-sm">Carregando...</div>
+    } @else if (feriados().length === 0) {
+      <div class="p-8 text-center">
+        <svg class="w-10 h-10 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        <p class="text-sm text-slate-500 dark:text-slate-400">Nenhum feriado cadastrado.</p>
+        <p class="text-xs text-slate-400 mt-1">Adicione manualmente ou importe via JSON.</p>
+      </div>
+    } @else {
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+          <tr>
+            <th class="text-left px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Data</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Descrição</th>
+            <th class="text-right px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+          @for (f of feriados(); track f.id) {
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+              <td class="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">{{ formatDate(f.date) }}</td>
+              <td class="px-4 py-3 text-slate-600 dark:text-slate-300">{{ f.description }}</td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1">
+                  <button (click)="openEdit(f)" title="Editar"
+                    class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                  </button>
+                  <button (click)="remove(f)" title="Remover"
+                    class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+
+</div>

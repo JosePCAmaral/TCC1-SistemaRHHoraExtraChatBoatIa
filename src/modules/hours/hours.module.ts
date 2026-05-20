@@ -7,6 +7,7 @@ import { User } from '../users/entities/user.entity';
 import { NetworkModule } from '../network/network.module';
 import { ParametersModule } from '../parameters/parameters.module';
 import { PeriodosModule } from '../periodos/periodos.module';
+import { FeriadosModule } from '../feriados/feriados.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { PeriodosModule } from '../periodos/periodos.module';
     NetworkModule,
     ParametersModule,
     forwardRef(() => PeriodosModule),
+    FeriadosModule,
   ],
   providers: [HoursService],
   controllers: [HoursController],

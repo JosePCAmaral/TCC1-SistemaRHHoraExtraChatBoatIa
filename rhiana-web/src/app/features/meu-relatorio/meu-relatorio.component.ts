@@ -89,16 +89,18 @@ export class MeuRelatorioComponent implements OnInit {
 
       autoTable(doc, {
         startY: 74,
-        head: [['Tipo', 'Horas', 'Valor']],
+        head: [['Tipo', 'Bruto', 'Comprometido', 'Disponível']],
         body: [
-          ['Horas Extras 50%', this.formatHours(r.summary.totalExtraHours50), this.formatCurrency(r.summary.financialSummary.extra50Value)],
-          ['Horas Extras 60%', this.formatHours(r.summary.totalExtraHours60 ?? 0), this.formatCurrency(r.summary.financialSummary.extra60Value ?? 0)],
-          ['Horas Extras 100%', this.formatHours(r.summary.totalExtraHours100), this.formatCurrency(r.summary.financialSummary.extra100Value)],
-          ['Adicional Noturno', this.formatHours(r.summary.totalNightHours), this.formatCurrency(r.summary.financialSummary.nightValue)],
-          ['TOTAL', this.formatHours(r.summary.totalExtraHours), this.formatCurrency((r.summary.financialSummary.extra50Value ?? 0) + (r.summary.financialSummary.extra60Value ?? 0) + (r.summary.financialSummary.extra100Value ?? 0) + (r.summary.financialSummary.nightValue ?? 0))],
+          ['Extras 50%', this.formatHours(r.summary.bruto.h50), '', this.formatHours(r.summary.disponivel.h50)],
+          ['Extras 60%', this.formatHours(r.summary.bruto.h60), '', this.formatHours(r.summary.disponivel.h60)],
+          ['Extras 100%', this.formatHours(r.summary.bruto.h100), '', this.formatHours(r.summary.disponivel.h100)],
+          ['Total Horas', this.formatHours(r.summary.bruto.totalExtra), this.formatHours(r.summary.comprometido.horas), this.formatHours(r.summary.disponivel.totalExtra)],
+          ['Adicional Noturno', this.formatCurrency(r.summary.bruto.financeiro.vNight), '', this.formatCurrency(r.summary.disponivel.financeiro.vNight)],
+          ['TOTAL FINANCEIRO', this.formatCurrency(r.summary.bruto.financeiro.total), '- ' + this.formatCurrency(r.summary.comprometido.valor), this.formatCurrency(r.summary.disponivel.financeiro.total)],
         ],
         theme: 'striped',
         headStyles: { fillColor: [30, 64, 175] },
+        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
       });
 
       const afterSummary = (doc as any).lastAutoTable.finalY + 10;
@@ -108,16 +110,31 @@ export class MeuRelatorioComponent implements OnInit {
 
       autoTable(doc, {
         startY: afterSummary + 4,
-        head: [['Tipo', 'Status', 'Referência', 'Horas', 'Valor Est.']],
+        head: [['Tipo', 'Status', 'Referência', 'Horas', 'Valor Est.', 'Justificativa']],
         body: (r.requestsList ?? []).map((req: any) => [
           req.type === 'pagamento' ? 'Pagamento' : 'Compensação',
           req.status === 'aprovado' ? 'Aprovado' : req.status === 'rejeitado' ? 'Rejeitado' : 'Pendente',
           this.formatDate(req.referenceDate),
           `${req.hoursAmount}h`,
           req.estimatedValue ? this.formatCurrency(req.estimatedValue) : '-',
+          req.justification ?? '-',
         ]),
         theme: 'striped',
         headStyles: { fillColor: [30, 64, 175] },
+        columnStyles: { 5: { cellWidth: 45 } },
+      });
+
+      const afterRequests = (doc as any).lastAutoTable.finalY + 10;
+      autoTable(doc, {
+        startY: afterRequests,
+        head: [['Resumo de Solicitações', 'Valor']],
+        body: [
+          ['Total de horas compensadas', `${r.requests.totals?.totalHorasCompensadas ?? 0}h`],
+          ['Total de horas pagas', `${r.requests.totals?.totalHorasPagas ?? 0}h`],
+          ['Valor total pago', this.formatCurrency(r.requests.totals?.totalValorPago ?? 0)],
+        ],
+        theme: 'striped',
+        headStyles: { fillColor: [5, 150, 105] },
       });
 
       doc.save(`meu_relatorio_${this.filters.startDate}.pdf`);
@@ -144,12 +161,12 @@ export class MeuRelatorioComponent implements OnInit {
         ['Período', `${this.formatDate(r.period.startDate)} a ${this.formatDate(r.period.endDate)}`],
         [],
         ['RESUMO DE HORAS'],
-        ['Tipo', 'Horas', 'Valor (R$)'],
-        ['Horas Extras 50%', r.summary.totalExtraHours50, r.summary.financialSummary.extra50Value],
-        ['Horas Extras 60%', r.summary.totalExtraHours60 ?? 0, r.summary.financialSummary.extra60Value ?? 0],
-        ['Horas Extras 100%', r.summary.totalExtraHours100, r.summary.financialSummary.extra100Value],
-        ['Adicional Noturno', r.summary.totalNightHours, r.summary.financialSummary.nightValue],
-        ['TOTAL EXTRAS', r.summary.totalExtraHours, r.summary.financialSummary.totalValue],
+        ['Tipo', 'Bruto (h)', 'Comprometido (h)', 'Disponível (h)', 'Valor Disponível (R$)'],
+        ['Extras 50%', r.summary.bruto.h50, '', r.summary.disponivel.h50, r.summary.disponivel.financeiro.v50],
+        ['Extras 60%', r.summary.bruto.h60, '', r.summary.disponivel.h60, r.summary.disponivel.financeiro.v60],
+        ['Extras 100%', r.summary.bruto.h100, '', r.summary.disponivel.h100, r.summary.disponivel.financeiro.v100],
+        ['Adicional Noturno', r.summary.bruto.nightHours, '', r.summary.disponivel.nightHours, r.summary.disponivel.financeiro.vNight],
+        ['TOTAL', r.summary.bruto.totalExtra, r.summary.comprometido.horas, r.summary.disponivel.totalExtra, r.summary.disponivel.financeiro.total],
         [],
         ['SOLICITAÇÕES'],
         ['Total', r.requests.total],

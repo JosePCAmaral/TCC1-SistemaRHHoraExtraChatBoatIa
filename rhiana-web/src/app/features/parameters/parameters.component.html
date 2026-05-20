@@ -1,11 +1,9 @@
 <div class="space-y-6">
 
   <!-- Header -->
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-2xl font-bold text-slate-800">Parâmetros do Sistema</h1>
-      <p class="text-sm text-slate-500 mt-0.5">Gerencie as regras CLT e os feriados aplicados nos cálculos</p>
-    </div>
+  <div>
+    <h1 class="text-2xl font-bold text-slate-800 dark:text-slate-100">Parâmetros CLT</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Gerencie as regras trabalhistas aplicadas nos cálculos de horas extras</p>
   </div>
 
   <!-- Alerts -->
@@ -26,35 +24,6 @@
     </div>
   }
 
-  <!-- Tabs -->
-  <div class="border-b border-slate-200">
-    <div class="flex gap-6">
-      <button
-        (click)="setTab('clt')"
-        class="pb-3 text-sm font-medium border-b-2 transition-colors"
-        [class.border-blue-600]="activeTab() === 'clt'"
-        [class.text-blue-600]="activeTab() === 'clt'"
-        [class.border-transparent]="activeTab() !== 'clt'"
-        [class.text-slate-500]="activeTab() !== 'clt'">
-        Parâmetros CLT
-      </button>
-      <button
-        (click)="setTab('feriados')"
-        class="pb-3 text-sm font-medium border-b-2 transition-colors"
-        [class.border-blue-600]="activeTab() === 'feriados'"
-        [class.text-blue-600]="activeTab() === 'feriados'"
-        [class.border-transparent]="activeTab() !== 'feriados'"
-        [class.text-slate-500]="activeTab() !== 'feriados'">
-        Feriados
-        @if (feriados().length > 0) {
-          <span class="ml-1.5 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full font-medium">
-            {{ feriados().length }}
-          </span>
-        }
-      </button>
-    </div>
-  </div>
-
   <!-- Loading -->
   @if (loading()) {
     <div class="flex items-center justify-center py-16">
@@ -62,17 +31,16 @@
     </div>
   }
 
-  <!-- TAB: Parâmetros CLT -->
-  @if (!loading() && activeTab() === 'clt') {
+  <!-- Parâmetros -->
+  @if (!loading()) {
     <div class="space-y-3">
       @for (param of cltParams(); track param.id) {
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-4">
           <div class="flex items-start justify-between gap-4">
 
-            <!-- Info -->
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
-                <span class="text-sm font-semibold text-slate-800">{{ param.description }}</span>
+                <span class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{ param.description }}</span>
                 <span class="px-2 py-0.5 text-xs rounded-full font-medium {{ getTypeClass(param.type) }}">
                   {{ getTypeLabel(param.type) }}
                 </span>
@@ -80,17 +48,14 @@
               <p class="text-xs text-slate-400 mt-0.5 font-mono">{{ param.key }}</p>
             </div>
 
-            <!-- Value + Actions -->
             <div class="flex items-center gap-2 shrink-0">
               @if (editState[param.id] && editState[param.id].editing) {
-                <!-- Editing mode -->
                 <div class="flex items-center gap-2">
                   <input
                     type="number"
                     [(ngModel)]="editState[param.id].value"
                     class="w-24 px-3 py-1.5 border border-blue-300 rounded-xl text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                    min="0"
-                  />
+                    min="0"/>
                   <span class="text-xs text-slate-500">{{ getUnit(param.key) }}</span>
                   <button
                     (click)="saveParam(param)"
@@ -104,15 +69,13 @@
                   </button>
                 </div>
               } @else {
-                <!-- Display mode -->
                 <div class="flex items-center gap-3">
                   <div class="text-right">
-                    <span class="text-xl font-bold text-slate-800">{{ param.value }}</span>
+                    <span class="text-xl font-bold text-slate-800 dark:text-slate-100">{{ param.value }}</span>
                     <span class="text-xs text-slate-500 ml-1">{{ getUnit(param.key) }}</span>
                   </div>
                   <button
                     (click)="startEdit(param)"
-                    title="Editar"
                     class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -128,26 +91,21 @@
 
       @if (cltParams().length === 0) {
         <div class="text-center py-16 text-slate-400">
-          <svg class="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
           <p class="text-sm">Nenhum parâmetro encontrado.</p>
         </div>
       }
     </div>
 
     <!-- Info CLT -->
-    <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4">
+    <div class="bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-800 rounded-2xl p-4">
       <div class="flex gap-3">
         <svg class="w-5 h-5 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <div class="text-sm text-blue-700 space-y-1">
+        <div class="text-sm text-blue-700 dark:text-blue-300 space-y-1">
           <p class="font-medium">Referências legais dos parâmetros padrão:</p>
-          <ul class="text-xs text-blue-600 space-y-0.5 list-disc list-inside">
+          <ul class="text-xs text-blue-600 dark:text-blue-400 space-y-0.5 list-disc list-inside">
             <li>Hora extra normal (50%) — Art. 59, §1º CLT</li>
             <li>Hora extra domingo/feriado (100%) — Art. 70 CLT</li>
             <li>Adicional noturno (20%) — Art. 73 CLT</li>
@@ -159,320 +117,4 @@
     </div>
   }
 
-  <!-- TAB: Feriados -->
-  @if (!loading() && activeTab() === 'feriados') {
-    <div class="space-y-4">
-
-      <!-- Header com botões -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p class="text-sm text-slate-500">
-          Feriados cadastrados são reconhecidos automaticamente no cálculo de horas extras (100%).
-        </p>
-        <div class="flex items-center gap-2 shrink-0">
-          <button
-            (click)="downloadFeriadoTemplate()"
-            title="Baixar template JSON"
-            class="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium rounded-xl transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            Template
-          </button>
-          <button
-            (click)="showImportPanel() ? closeImportPanel() : openImportPanel()"
-            class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl transition-colors"
-            [class.bg-amber-100]="showImportPanel()"
-            [class.text-amber-700]="showImportPanel()"
-            [class.bg-slate-100]="!showImportPanel()"
-            [class.text-slate-600]="!showImportPanel()"
-            [class.hover:bg-amber-200]="showImportPanel()"
-            [class.hover:bg-slate-200]="!showImportPanel()">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-            </svg>
-            Importar JSON
-          </button>
-          <button
-            (click)="openAddFeriado()"
-            class="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Adicionar
-          </button>
-        </div>
-      </div>
-
-      <!-- Painel de importação -->
-      @if (showImportPanel()) {
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div class="px-5 py-3.5 border-b border-slate-100 bg-amber-50 flex items-center justify-between">
-            <p class="text-sm font-semibold text-amber-800">Importação em lote de feriados</p>
-            <button (click)="closeImportPanel()" class="p-1 text-amber-500 hover:text-amber-700 rounded-lg">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
-
-          <div class="p-5 space-y-4">
-
-            <!-- Erro de parse -->
-            @if (feriadoImportError()) {
-              <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                {{ feriadoImportError() }}
-              </div>
-            }
-
-            <!-- Drop zone (só quando não há preview nem resultado) -->
-            @if (feriadoImportPreview().length === 0 && !feriadoImportResult()) {
-              <div
-                class="rounded-xl border-2 border-dashed transition-colors duration-150 cursor-pointer"
-                [class.border-amber-400]="isDraggingFeriado()"
-                [class.bg-amber-50]="isDraggingFeriado()"
-                [class.border-slate-300]="!isDraggingFeriado()"
-                [class.bg-slate-50]="!isDraggingFeriado()"
-                (dragover)="onFeriadoDragOver($event)"
-                (dragleave)="onFeriadoDragLeave()"
-                (drop)="onFeriadoDrop($event)">
-                <label class="flex flex-col items-center justify-center py-8 cursor-pointer gap-2">
-                  <svg class="w-8 h-8 transition-colors"
-                    [class.text-amber-400]="isDraggingFeriado()"
-                    [class.text-slate-300]="!isDraggingFeriado()"
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                  </svg>
-                  <p class="text-sm text-slate-500">
-                    Arraste o arquivo ou <span class="font-semibold text-amber-600">clique para selecionar</span>
-                  </p>
-                  <p class="text-xs text-slate-400">Formato: <code>[&#123; "date": "YYYY-MM-DD", "name": "..." &#125;]</code></p>
-                  <input type="file" accept=".json" class="hidden" (change)="onFeriadoFileChange($event)"/>
-                </label>
-              </div>
-            }
-
-            <!-- Preview -->
-            @if (feriadoImportPreview().length > 0) {
-              <div class="space-y-3">
-                <div class="flex items-center justify-between">
-                  <p class="text-sm font-medium text-slate-700">
-                    {{ feriadoImportPreview().length }} feriado(s) para importar
-                  </p>
-                  <button (click)="clearFeriadoImport()" class="text-xs text-slate-400 hover:text-red-500">Limpar</button>
-                </div>
-                <div class="rounded-xl border border-slate-200 overflow-hidden">
-                  <table class="w-full">
-                    <thead>
-                      <tr class="bg-slate-50 border-b border-slate-200">
-                        <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">#</th>
-                        <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Data</th>
-                        <th class="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Nome do Feriado</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                      @for (item of feriadoImportPreview(); track item.date; let i = $index) {
-                        <tr class="hover:bg-slate-50">
-                          <td class="px-4 py-2.5 text-xs text-slate-400">{{ i + 1 }}</td>
-                          <td class="px-4 py-2.5 text-sm text-slate-700 font-mono">{{ formatDate(item.date) }}</td>
-                          <td class="px-4 py-2.5 text-sm text-slate-800">{{ item.name }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-                <div class="flex gap-2 justify-end">
-                  <button (click)="clearFeriadoImport()"
-                    class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors">
-                    Cancelar
-                  </button>
-                  <button (click)="confirmFeriadoImport()" [disabled]="feriadoImportLoading()"
-                    class="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors">
-                    @if (feriadoImportLoading()) {
-                      <div class="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                      Importando...
-                    } @else {
-                      Confirmar Importação
-                    }
-                  </button>
-                </div>
-              </div>
-            }
-
-            <!-- Resultado -->
-            @if (feriadoImportResult()) {
-              <div class="space-y-3">
-                <div class="grid grid-cols-2 gap-3">
-                  <div class="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-center">
-                    <p class="text-2xl font-bold text-green-700">{{ feriadoImportResult()!.imported }}</p>
-                    <p class="text-xs text-green-600 mt-0.5">Importados</p>
-                  </div>
-                  <div class="rounded-xl px-4 py-3 text-center border"
-                    [class.bg-red-50]="feriadoImportResult()!.errors.length > 0"
-                    [class.border-red-200]="feriadoImportResult()!.errors.length > 0"
-                    [class.bg-slate-50]="feriadoImportResult()!.errors.length === 0"
-                    [class.border-slate-200]="feriadoImportResult()!.errors.length === 0">
-                    <p class="text-2xl font-bold"
-                      [class.text-red-700]="feriadoImportResult()!.errors.length > 0"
-                      [class.text-slate-400]="feriadoImportResult()!.errors.length === 0">
-                      {{ feriadoImportResult()!.errors.length }}
-                    </p>
-                    <p class="text-xs mt-0.5"
-                      [class.text-red-600]="feriadoImportResult()!.errors.length > 0"
-                      [class.text-slate-400]="feriadoImportResult()!.errors.length === 0">
-                      Erros
-                    </p>
-                  </div>
-                </div>
-                @if (feriadoImportResult()!.errors.length > 0) {
-                  <div class="rounded-xl border border-red-200 overflow-hidden">
-                    <div class="px-4 py-2.5 bg-red-50 border-b border-red-200">
-                      <p class="text-xs font-semibold text-red-700">Linhas com erro</p>
-                    </div>
-                    @for (e of feriadoImportResult()!.errors; track e.row) {
-                      <div class="px-4 py-2.5 flex items-center gap-3 border-b border-red-100 last:border-0">
-                        <span class="w-6 h-6 rounded-full bg-red-100 text-red-600 text-xs font-bold flex items-center justify-center shrink-0">{{ e.row }}</span>
-                        <div>
-                          <p class="text-xs font-mono text-slate-700">{{ formatDate(e.date) }}</p>
-                          <p class="text-xs text-red-500">{{ e.reason }}</p>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                }
-                <div class="flex justify-end">
-                  <button (click)="closeImportPanel()"
-                    class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors">
-                    Fechar
-                  </button>
-                </div>
-              </div>
-            }
-
-          </div>
-        </div>
-      }
-
-      <!-- Lista de feriados -->
-      @if (feriados().length > 0) {
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 divide-y divide-slate-100">
-          @for (feriado of feriados(); track feriado.id) {
-            <div class="flex items-center justify-between px-4 py-3.5">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center shrink-0">
-                  <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                  </svg>
-                </div>
-                <div>
-                  <p class="text-sm font-semibold text-slate-800">{{ feriado.value }}</p>
-                  <p class="text-xs text-slate-400 mt-0.5">
-                    {{ formatDate(extractDateFromKey(feriado.key)) }}
-                  </p>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="px-2 py-0.5 text-xs rounded-full font-medium bg-red-100 text-red-600">
-                  100% adicional
-                </span>
-                <button
-                  (click)="deleteFeriado(feriado)"
-                  [disabled]="deletingId() === feriado.id"
-                  title="Remover feriado"
-                  class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50">
-                  @if (deletingId() === feriado.id) {
-                    <div class="w-4 h-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent"></div>
-                  } @else {
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                  }
-                </button>
-              </div>
-            </div>
-          }
-        </div>
-      } @else {
-        <div class="text-center py-16 text-slate-400 bg-white rounded-2xl border border-slate-100">
-          <svg class="w-10 h-10 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-          </svg>
-          <p class="text-sm font-medium text-slate-500">Nenhum feriado cadastrado</p>
-          <p class="text-xs text-slate-400 mt-1">Adicione feriados para que sejam reconhecidos automaticamente nos cálculos.</p>
-        </div>
-      }
-
-      <!-- Info feriados -->
-      <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4">
-        <div class="flex gap-3">
-          <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <p class="text-sm text-amber-700">
-            Horas trabalhadas em feriados recebem adicional de <strong>100%</strong> conforme o Art. 70 da CLT.
-            Cadastre todos os feriados nacionais, estaduais e municipais aplicáveis à empresa.
-          </p>
-        </div>
-      </div>
-    </div>
-  }
-
 </div>
-
-<!-- Modal: Adicionar Feriado -->
-@if (showAddFeriadoModal()) {
-  <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-    <div class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm" (click)="closeAddFeriado()"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm z-10">
-
-      <div class="flex items-center justify-between mb-5">
-        <h2 class="text-lg font-bold text-slate-800">Adicionar Feriado</h2>
-        <button (click)="closeAddFeriado()" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Data do Feriado</label>
-          <input
-            type="date"
-            [(ngModel)]="newFeriado.date"
-            class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Nome do Feriado</label>
-          <input
-            type="text"
-            [(ngModel)]="newFeriado.name"
-            placeholder="Ex: Natal, Tiradentes..."
-            class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
-      <div class="flex gap-3 mt-6">
-        <button
-          (click)="closeAddFeriado()"
-          class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors">
-          Cancelar
-        </button>
-        <button
-          (click)="addFeriado()"
-          [disabled]="!newFeriado.date || !newFeriado.name || savingFeriado()"
-          class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
-          @if (savingFeriado()) {
-            <div class="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-          }
-          Salvar
-        </button>
-      </div>
-    </div>
-  </div>
-}

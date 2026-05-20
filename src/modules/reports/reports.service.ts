@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { localDateString } from '../../common/utils/date.utils';
+import { computeGross, deductFromTiers, TierBalance } from '../../common/utils/balance.utils';
 import { HourRecord, RecordType } from '../hours/entities/hour-record.entity';
 import { User, UserStatus } from '../users/entities/user.entity';
 import { Request, RequestStatus, RequestType } from '../requests/entities/request.entity';
@@ -52,60 +53,44 @@ export class ReportsService {
 
     const saidas = records.filter(r => r.type === RecordType.SAIDA);
     const totalRegular = saidas.reduce((sum, r) => sum + Number(r.regularHours), 0);
-    const totalExtra50 = saidas.reduce((sum, r) => sum + Number(r.extraHours50), 0);
-    const totalExtra60 = saidas.reduce((sum, r) => sum + Number((r as any).extraHours60 ?? 0), 0);
-    const totalExtra100 = saidas.reduce((sum, r) => sum + Number(r.extraHours100), 0);
-    const totalNight = saidas.reduce((sum, r) => sum + Number(r.nightHours), 0);
-    const totalExtra = totalExtra50 + totalExtra60 + totalExtra100;
     const hourlyRate = Number(user.hourlyRate ?? 0);
+    const nightMultiplier = await this.getNightMultiplier();
 
     const dailySummary = this.groupByDay(records);
 
-    // Totais de solicitações
+    // Bruto — total ganho no período pelos registros de ponto
+    const bruto = computeGross(saidas, hourlyRate, nightMultiplier);
+
+    // Comprometido — requerimentos aprovados (pagamento + compensação)
     const approvedRequests = requests.filter(r => r.status === RequestStatus.APROVADO);
     const compensacaoAprovadas = approvedRequests.filter(r => r.type === RequestType.COMPENSACAO);
     const pagamentoAprovados = approvedRequests.filter(r => r.type === RequestType.PAGAMENTO);
+    const totalHorasCompensadas = compensacaoAprovadas.reduce((s, r) => s + Number(r.hoursAmount), 0);
+    const totalHorasPagas = pagamentoAprovados.reduce((s, r) => s + Number(r.hoursAmount), 0);
+    const totalAprovado = totalHorasCompensadas + totalHorasPagas;
 
-    const totalHorasCompensadas = compensacaoAprovadas.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
-    const totalHorasPagas = pagamentoAprovados.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
-    const totalValorPago = pagamentoAprovados.reduce((sum, r) => {
-      const tier = Number((r as any).overtimeTier ?? 50);
-      const multiplier = 1 + tier / 100;
-      return sum + Number(r.hoursAmount) * hourlyRate * multiplier;
-    }, 0);
+    // Calcula valor monetário de cada requerimento aprovado sequencialmente (100%→60%→50%)
+    let tempGross: Pick<TierBalance, 'h50' | 'h60' | 'h100' | 'nightHours'> = bruto;
+    const approvedWithValue = approvedRequests.map(req => {
+      const { disponivel: afterDeduct, valorDeducido } = deductFromTiers(tempGross, Number(req.hoursAmount), hourlyRate, nightMultiplier);
+      tempGross = afterDeduct;
+      return {
+        id: req.id,
+        type: req.type,
+        status: req.status,
+        hoursAmount: req.hoursAmount,
+        referenceDate: req.referenceDate,
+        estimatedValue: req.type === RequestType.PAGAMENTO ? valorDeducido : null,
+      };
+    });
 
-    // Calcular horas deductíveis (abater compensações e pagamentos das extras)
-    // Deduzir prioritariamente de 100%, depois 60%, depois 50%
-    let deductible50 = totalExtra50;
-    let deductible60 = totalExtra60;
-    let deductible100 = totalExtra100;
+    const totalValorPago = approvedWithValue
+      .filter(r => r.type === RequestType.PAGAMENTO)
+      .reduce((s, r) => s + (r.estimatedValue ?? 0), 0);
 
-    const totalDeducted = totalHorasCompensadas + totalHorasPagas;
-    let remaining = totalDeducted;
+    const { disponivel, valorDeducido: totalValorComprometido } = deductFromTiers(bruto, totalAprovado, hourlyRate, nightMultiplier);
 
-    if (remaining > 0 && deductible100 > 0) {
-      const toRemove100 = Math.min(remaining, deductible100);
-      deductible100 -= toRemove100;
-      remaining -= toRemove100;
-    }
-    if (remaining > 0 && deductible60 > 0) {
-      const toRemove60 = Math.min(remaining, deductible60);
-      deductible60 -= toRemove60;
-      remaining -= toRemove60;
-    }
-    if (remaining > 0 && deductible50 > 0) {
-      const toRemove50 = Math.min(remaining, deductible50);
-      deductible50 -= toRemove50;
-    }
-
-    const nightMultiplier = await this.getNightMultiplier();
-    const totalExtraDeductible = deductible50 + deductible60 + deductible100;
-    const regularValue = totalRegular * hourlyRate;
-    const extra50Value = deductible50 * hourlyRate * 1.5;
-    const extra60Value = deductible60 * hourlyRate * 1.6;
-    const extra100Value = deductible100 * hourlyRate * 2.0;
-    const nightValue = totalNight * hourlyRate * nightMultiplier;
-    const totalValue = regularValue + extra50Value + extra60Value + extra100Value + nightValue;
+    const regularValue = +(totalRegular * hourlyRate).toFixed(2);
 
     return {
       user: {
@@ -121,25 +106,28 @@ export class ReportsService {
       period: { startDate, endDate },
       summary: {
         totalRegularHours: +totalRegular.toFixed(2),
-        totalExtraHours50: +deductible50.toFixed(2),
-        totalExtraHours60: +deductible60.toFixed(2),
-        totalExtraHours100: +deductible100.toFixed(2),
-        totalNightHours: +totalNight.toFixed(2),
-        totalExtraHours: +totalExtraDeductible.toFixed(2),
-        // Campos com totais originais (antes de deduções)
-        originalExtraHours50: +totalExtra50.toFixed(2),
-        originalExtraHours60: +totalExtra60.toFixed(2),
-        originalExtraHours100: +totalExtra100.toFixed(2),
-        originalExtraHours: +totalExtra.toFixed(2),
-        financialSummary: {
-          regularValue: +regularValue.toFixed(2),
-          extra50Value: +extra50Value.toFixed(2),
-          extra60Value: +extra60Value.toFixed(2),
-          extra100Value: +extra100Value.toFixed(2),
-          nightValue: +nightValue.toFixed(2),
-          totalValue: +totalValue.toFixed(2),
-        },
         workedDays: dailySummary.length,
+        bruto,
+        comprometido: {
+          horas: +totalAprovado.toFixed(2),
+          valor: totalValorComprometido,
+          requerimentos: approvedWithValue,
+        },
+        disponivel,
+        // Aliases para compatibilidade — apontam para bruto
+        totalExtraHours50: bruto.h50,
+        totalExtraHours60: bruto.h60,
+        totalExtraHours100: bruto.h100,
+        totalNightHours: bruto.nightHours,
+        totalExtraHours: bruto.totalExtra,
+        financialSummary: {
+          regularValue,
+          extra50Value: bruto.financeiro.v50,
+          extra60Value: bruto.financeiro.v60,
+          extra100Value: bruto.financeiro.v100,
+          nightValue: bruto.financeiro.vNight,
+          totalValue: bruto.financeiro.total,
+        },
       },
       requests: {
         total: requests.length,
@@ -153,21 +141,22 @@ export class ReportsService {
           totalValorPago: +totalValorPago.toFixed(2),
         },
       },
-      requestsList: requests.map(r => ({
-        id: r.id,
-        type: r.type,
-        status: r.status,
-        referenceDate: r.referenceDate,
-        hoursAmount: r.hoursAmount,
-        justification: r.justification,
-        reviewerComment: r.reviewerComment,
-        reviewedAt: r.reviewedAt,
-        createdAt: r.createdAt,
-        reviewer: r.reviewer ? { name: r.reviewer.name } : null,
-        estimatedValue: r.status === RequestStatus.APROVADO
-          ? +((Number(r.hoursAmount) * hourlyRate * (1 + Number((r as any).overtimeTier ?? 50) / 100))).toFixed(2)
-          : null,
-      })),
+      requestsList: requests.map(r => {
+        const approved = approvedWithValue.find(a => a.id === r.id);
+        return {
+          id: r.id,
+          type: r.type,
+          status: r.status,
+          referenceDate: r.referenceDate,
+          hoursAmount: r.hoursAmount,
+          justification: r.justification,
+          reviewerComment: r.reviewerComment,
+          reviewedAt: r.reviewedAt,
+          createdAt: r.createdAt,
+          reviewer: r.reviewer ? { name: r.reviewer.name } : null,
+          estimatedValue: approved?.estimatedValue ?? null,
+        };
+      }),
       dailySummary,
       records,
     };
@@ -179,11 +168,22 @@ export class ReportsService {
       where: { status: UserStatus.ATIVO },
     });
 
+    const nightMultiplier = await this.getNightMultiplier();
+
     const results = await Promise.all(
       users.map(async (user) => {
-        const records = await this.hourRecordRepository.find({
-          where: { userId: user.id, date: Between(startDate, endDate) },
-        });
+        const [records, approvedRequests] = await Promise.all([
+          this.hourRecordRepository.find({
+            where: { userId: user.id, date: Between(startDate, endDate) },
+          }),
+          this.requestRepository.find({
+            where: {
+              userId: user.id,
+              status: RequestStatus.APROVADO,
+              referenceDate: Between(startDate, endDate),
+            },
+          }),
+        ]);
 
         const saidas = records.filter(r => r.type === RecordType.SAIDA);
         const totalExtra50 = saidas.reduce((sum, r) => sum + Number(r.extraHours50), 0);
@@ -192,6 +192,13 @@ export class ReportsService {
         const totalNight = saidas.reduce((sum, r) => sum + Number(r.nightHours), 0);
         const totalRegular = saidas.reduce((sum, r) => sum + Number(r.regularHours), 0);
         const rate = Number(user.hourlyRate ?? 0);
+        const bruto = computeGross(saidas, rate, nightMultiplier);
+
+        const pagamentos = approvedRequests.filter(r => r.type === RequestType.PAGAMENTO);
+        const compensacoes = approvedRequests.filter(r => r.type === RequestType.COMPENSACAO);
+        const horasPagas = pagamentos.reduce((s, r) => s + Number(r.hoursAmount), 0);
+        const horasCompensadas = compensacoes.reduce((s, r) => s + Number(r.hoursAmount), 0);
+        const { valorDeducido: valorPago } = deductFromTiers(bruto, horasPagas, rate, nightMultiplier);
 
         return {
           userId: user.id,
@@ -212,6 +219,14 @@ export class ReportsService {
                 totalExtra100 * rate * 2.0
               ).toFixed(2)
             : null,
+          requests: {
+            total: approvedRequests.length,
+            pagamentos: pagamentos.length,
+            compensacoes: compensacoes.length,
+            horasPagas: +horasPagas.toFixed(2),
+            horasCompensadas: +horasCompensadas.toFixed(2),
+            valorPago: rate ? +valorPago.toFixed(2) : null,
+          },
         };
       }),
     );
@@ -220,6 +235,10 @@ export class ReportsService {
     const totalExtra60Geral = results.reduce((sum, r) => sum + r.totalExtraHours60, 0);
     const totalNightGeral = results.reduce((sum, r) => sum + r.totalNightHours, 0);
     const totalValueGeral = results.reduce((sum, r) => sum + (r.totalValueExtra ?? 0), 0);
+    const totalRequerimentos = results.reduce((sum, r) => sum + r.requests.total, 0);
+    const totalHorasPagas = results.reduce((sum, r) => sum + r.requests.horasPagas, 0);
+    const totalHorasCompensadas = results.reduce((sum, r) => sum + r.requests.horasCompensadas, 0);
+    const totalValorPago = results.reduce((sum, r) => sum + (r.requests.valorPago ?? 0), 0);
 
     return {
       period: { startDate, endDate },
@@ -228,6 +247,10 @@ export class ReportsService {
       totalExtraHours60: +totalExtra60Geral.toFixed(2),
       totalNightHours: +totalNightGeral.toFixed(2),
       totalExtraValue: +totalValueGeral.toFixed(2),
+      totalRequerimentos,
+      totalHorasPagas: +totalHorasPagas.toFixed(2),
+      totalHorasCompensadas: +totalHorasCompensadas.toFixed(2),
+      totalValorPago: +totalValorPago.toFixed(2),
       collaborators: results,
     };
   }

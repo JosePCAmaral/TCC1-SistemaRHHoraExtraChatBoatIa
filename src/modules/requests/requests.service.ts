@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In } from 'typeorm';
+import { computeGross, deductFromTiers } from '../../common/utils/balance.utils';
 import { Request, RequestStatus } from './entities/request.entity';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { ReviewRequestDto } from './dto/review-request.dto';
 import { User } from '../users/entities/user.entity';
 import { HourRecord, RecordType } from '../hours/entities/hour-record.entity';
 import { ParametersService } from '../parameters/parameters.service';
+import { PeriodosService } from '../periodos/periodos.service';
 
 const DEFAULT_ADICIONAL_NOTURNO_PERCENT = 20;
 
@@ -20,6 +22,7 @@ export class RequestsService {
     @InjectRepository(HourRecord)
     private hourRecordRepository: Repository<HourRecord>,
     private parametersService: ParametersService,
+    private periodosService: PeriodosService,
   ) {}
 
   private async getNightMultiplier(): Promise<number> {
@@ -42,33 +45,40 @@ export class RequestsService {
     return this.requestRepository.save(request);
   }
 
-  private async validateBalance(userId: number, hoursRequested: number): Promise<void> {
+  private async getActivePeriodRange(empresaId: number): Promise<{ startDate: string; endDate: string }> {
+    const periodo = empresaId ? await this.periodosService.findAtivo(empresaId) : null;
+    if (periodo) return { startDate: periodo.startDate, endDate: periodo.endDate };
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return { startDate, endDate };
+  }
+
+  private async validateBalance(userId: number, hoursRequested: number): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    const { startDate, endDate } = await this.getActivePeriodRange(user.empresaId);
 
     const records = await this.hourRecordRepository.find({
       where: { userId, date: Between(startDate, endDate) },
     });
     const saidas = records.filter(r => r.type === RecordType.SAIDA);
-    const totalAvailable = saidas.reduce(
-      (sum, r) =>
-        sum +
-        Number(r.extraHours50) +
-        Number((r as any).extraHours60 ?? 0) +
-        Number(r.extraHours100),
-      0,
-    );
+    const nightMultiplier = await this.getNightMultiplier();
+    const hourlyRate = 0; // não precisamos do valor financeiro aqui
+    const bruto = computeGross(saidas, hourlyRate, nightMultiplier);
 
+    // Para validação do colaborador: conta PENDENTE + APROVADO (evita duplo pedido)
     const existingRequests = await this.requestRepository.find({
       where: { userId, status: In([RequestStatus.PENDENTE, RequestStatus.APROVADO]) },
     });
-    const alreadyRequested = existingRequests.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
+    const alreadyCommitted = existingRequests.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
 
-    const available = +(totalAvailable - alreadyRequested).toFixed(2);
+    const { disponivel } = deductFromTiers(bruto, alreadyCommitted, hourlyRate, nightMultiplier);
+    const available = disponivel.totalExtra;
+
     if (hoursRequested > available) {
       throw new BadRequestException(
         `Saldo insuficiente. Disponível: ${available}h, solicitado: ${hoursRequested}h`,
@@ -168,31 +178,25 @@ export class RequestsService {
 
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const lastDay = new Date(year, month, 0).getDate();
-    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const { startDate, endDate } = await this.getActivePeriodRange(user.empresaId);
 
     const records = await this.hourRecordRepository.find({
       where: { userId: request.userId, date: Between(startDate, endDate) },
     });
 
     const saidas = records.filter(r => r.type === RecordType.SAIDA);
-    const totalExtraHours50 = saidas.reduce((sum, r) => sum + Number(r.extraHours50), 0);
-    const totalExtraHours60 = saidas.reduce((sum, r) => sum + Number((r as any).extraHours60 ?? 0), 0);
-    const totalExtraHours100 = saidas.reduce((sum, r) => sum + Number(r.extraHours100), 0);
-    const totalNightHours = saidas.reduce((sum, r) => sum + Number(r.nightHours), 0);
-    const totalExtraHours = totalExtraHours50 + totalExtraHours60 + totalExtraHours100;
     const hourlyRate = Number(user.hourlyRate ?? 0);
-
     const nightMultiplier = await this.getNightMultiplier();
-    const extra50Value = totalExtraHours50 * hourlyRate * 1.5;
-    const extra60Value = totalExtraHours60 * hourlyRate * 1.6;
-    const extra100Value = totalExtraHours100 * hourlyRate * 2.0;
-    const nightValue = totalNightHours * hourlyRate * nightMultiplier;
-    const totalValue = extra50Value + extra60Value + extra100Value + nightValue;
+
+    const bruto = computeGross(saidas, hourlyRate, nightMultiplier);
+
+    // Para o RH: conta apenas APROVADOS (não PENDENTES) — mostra saldo real já confirmado
+    const approvedRequests = await this.requestRepository.find({
+      where: { userId: request.userId, status: RequestStatus.APROVADO },
+    });
+    const committed = approvedRequests.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
+
+    const { disponivel } = deductFromTiers(bruto, committed, hourlyRate, nightMultiplier);
 
     return {
       request,
@@ -201,17 +205,17 @@ export class RequestsService {
         department: user.department,
         position: user.position,
         hourlyRate: +hourlyRate.toFixed(2),
-        totalExtraHours: +totalExtraHours.toFixed(2),
-        extraHours50: +totalExtraHours50.toFixed(2),
-        extraHours60: +totalExtraHours60.toFixed(2),
-        extraHours100: +totalExtraHours100.toFixed(2),
-        nightHours: +totalNightHours.toFixed(2),
+        totalExtraHours: disponivel.totalExtra,
+        extraHours50: disponivel.h50,
+        extraHours60: disponivel.h60,
+        extraHours100: disponivel.h100,
+        nightHours: disponivel.nightHours,
         financialSummary: {
-          extra50Value: +extra50Value.toFixed(2),
-          extra60Value: +extra60Value.toFixed(2),
-          extra100Value: +extra100Value.toFixed(2),
-          nightValue: +nightValue.toFixed(2),
-          totalValue: +totalValue.toFixed(2),
+          extra50Value: disponivel.financeiro.v50,
+          extra60Value: disponivel.financeiro.v60,
+          extra100Value: disponivel.financeiro.v100,
+          nightValue: disponivel.financeiro.vNight,
+          totalValue: disponivel.financeiro.total,
         },
       },
     };

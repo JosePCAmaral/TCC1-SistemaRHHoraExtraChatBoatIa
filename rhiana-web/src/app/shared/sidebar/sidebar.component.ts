@@ -84,6 +84,12 @@ export class SidebarComponent {
       roles: ['admin'],
     },
     {
+      label: 'Feriados',
+      route: '/feriados',
+      icon: 'feriados',
+      roles: ['admin'],
+    },
+    {
       label: 'Empresas',
       route: '/empresas',
       icon: 'empresas',

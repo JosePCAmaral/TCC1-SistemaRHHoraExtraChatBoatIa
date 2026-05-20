@@ -11,6 +11,7 @@ import { User, UserStatus } from '../users/entities/user.entity';
 import { Request, RequestStatus } from '../requests/entities/request.entity';
 import { HoursService } from '../hours/hours.service';
 import { ParametersService } from '../parameters/parameters.service';
+import { computeGross, deductFromTiers } from '../../common/utils/balance.utils';
 import { CreatePeriodoDto } from './dto/create-periodo.dto';
 import { AmendPeriodoDto } from './dto/amend-periodo.dto';
 
@@ -219,36 +220,23 @@ export class PeriodosService {
       );
 
       const saidas = records.filter(r => r.type === RecordType.SAIDA);
-      const gross50 = saidas.reduce((s, r) => s + Number(r.extraHours50), 0);
-      const gross60 = saidas.reduce((s, r) => s + Number((r as any).extraHours60 ?? 0), 0);
-      const gross100 = saidas.reduce((s, r) => s + Number(r.extraHours100), 0);
-      const grossNight = saidas.reduce((s, r) => s + Number(r.nightHours), 0);
       const grossRegular = saidas.reduce((s, r) => s + Number(r.regularHours), 0);
-
-      const totalApproved = periodRequests.reduce((s, r) => s + Number(r.hoursAmount), 0);
-
-      // Deduz do saldo: 100% → 60% → 50%
-      let eff100 = gross100, eff60 = gross60, eff50 = gross50;
-      let rem = totalApproved;
-      if (rem > 0 && eff100 > 0) { const d = Math.min(rem, eff100); eff100 -= d; rem -= d; }
-      if (rem > 0 && eff60 > 0)  { const d = Math.min(rem, eff60);  eff60  -= d; rem -= d; }
-      if (rem > 0 && eff50 > 0)  { const d = Math.min(rem, eff50);  eff50  -= d; }
-
       const rate = Number(user.hourlyRate ?? 0);
-      const extraValue = eff50 * rate * 1.5 + eff60 * rate * 1.6 + eff100 * rate * 2.0;
-      const nightValue = grossNight * rate * nightMultiplier;
+      const bruto = computeGross(saidas, rate, nightMultiplier);
+      const totalApproved = periodRequests.reduce((s, r) => s + Number(r.hoursAmount), 0);
+      const { disponivel } = deductFromTiers(bruto, totalApproved, rate, nightMultiplier);
 
       balancesToSave.push(this.balancesRepo.create({
         periodoId: id,
         userId: user.id,
         empresaId: periodo.empresaId,
-        extraHours50: +eff50.toFixed(2),
-        extraHours60: +eff60.toFixed(2),
-        extraHours100: +eff100.toFixed(2),
-        nightHours: +grossNight.toFixed(2),
-        totalExtraHours: +(eff50 + eff60 + eff100).toFixed(2),
-        extraValue: +extraValue.toFixed(2),
-        nightValue: +nightValue.toFixed(2),
+        extraHours50: disponivel.h50,
+        extraHours60: disponivel.h60,
+        extraHours100: disponivel.h100,
+        nightHours: bruto.nightHours,
+        totalExtraHours: disponivel.totalExtra,
+        extraValue: +(disponivel.financeiro.v50 + disponivel.financeiro.v60 + disponivel.financeiro.v100).toFixed(2),
+        nightValue: disponivel.financeiro.vNight,
       }));
 
       collaboratorSnapshots.push({
@@ -258,17 +246,17 @@ export class PeriodosService {
         position: user.position,
         workedDays: [...new Set(records.map(r => r.date))].length,
         totalRegularHours: +grossRegular.toFixed(2),
-        totalExtraHours50Gross: +gross50.toFixed(2),
-        totalExtraHours60Gross: +gross60.toFixed(2),
-        totalExtraHours100Gross: +gross100.toFixed(2),
-        totalNightHours: +grossNight.toFixed(2),
+        totalExtraHours50Gross: bruto.h50,
+        totalExtraHours60Gross: bruto.h60,
+        totalExtraHours100Gross: bruto.h100,
+        totalNightHours: bruto.nightHours,
         approvedHours: +totalApproved.toFixed(2),
-        balanceExtra50: +eff50.toFixed(2),
-        balanceExtra60: +eff60.toFixed(2),
-        balanceExtra100: +eff100.toFixed(2),
-        balanceTotalExtraHours: +(eff50 + eff60 + eff100).toFixed(2),
-        balanceExtraValue: +extraValue.toFixed(2),
-        balanceNightValue: +nightValue.toFixed(2),
+        balanceExtra50: disponivel.h50,
+        balanceExtra60: disponivel.h60,
+        balanceExtra100: disponivel.h100,
+        balanceTotalExtraHours: disponivel.totalExtra,
+        balanceExtraValue: +(disponivel.financeiro.v50 + disponivel.financeiro.v60 + disponivel.financeiro.v100).toFixed(2),
+        balanceNightValue: disponivel.financeiro.vNight,
       });
     }
 
@@ -403,28 +391,21 @@ export class PeriodosService {
     );
 
     const saidas = records.filter(r => r.type === RecordType.SAIDA);
-    let eff50 = saidas.reduce((s, r) => s + Number(r.extraHours50), 0);
-    let eff60 = saidas.reduce((s, r) => s + Number((r as any).extraHours60 ?? 0), 0);
-    let eff100 = saidas.reduce((s, r) => s + Number(r.extraHours100), 0);
-    const grossNight = saidas.reduce((s, r) => s + Number(r.nightHours), 0);
-
-    let rem = periodRequests.reduce((s, r) => s + Number(r.hoursAmount), 0);
-    if (rem > 0 && eff100 > 0) { const d = Math.min(rem, eff100); eff100 -= d; rem -= d; }
-    if (rem > 0 && eff60 > 0)  { const d = Math.min(rem, eff60);  eff60  -= d; rem -= d; }
-    if (rem > 0 && eff50 > 0)  { const d = Math.min(rem, eff50);  eff50  -= d; }
-
     const rate = Number(user.hourlyRate ?? 0);
+    const bruto = computeGross(saidas, rate, nightMultiplier);
+    const totalApproved = periodRequests.reduce((s, r) => s + Number(r.hoursAmount), 0);
+    const { disponivel } = deductFromTiers(bruto, totalApproved, rate, nightMultiplier);
 
     // Upsert: atualiza se já existe, cria se não existe
     const existing = await this.balancesRepo.findOne({ where: { periodoId: periodo.id, userId } });
     const balance = existing ?? this.balancesRepo.create({ periodoId: periodo.id, userId, empresaId: periodo.empresaId });
-    balance.extraHours50 = +eff50.toFixed(2);
-    balance.extraHours60 = +eff60.toFixed(2);
-    balance.extraHours100 = +eff100.toFixed(2);
-    balance.nightHours = +grossNight.toFixed(2);
-    balance.totalExtraHours = +(eff50 + eff60 + eff100).toFixed(2);
-    balance.extraValue = +(eff50 * rate * 1.5 + eff60 * rate * 1.6 + eff100 * rate * 2.0).toFixed(2);
-    balance.nightValue = +(grossNight * rate * nightMultiplier).toFixed(2);
+    balance.extraHours50 = disponivel.h50;
+    balance.extraHours60 = disponivel.h60;
+    balance.extraHours100 = disponivel.h100;
+    balance.nightHours = bruto.nightHours;
+    balance.totalExtraHours = disponivel.totalExtra;
+    balance.extraValue = +(disponivel.financeiro.v50 + disponivel.financeiro.v60 + disponivel.financeiro.v100).toFixed(2);
+    balance.nightValue = disponivel.financeiro.vNight;
     await this.balancesRepo.save(balance);
   }
 

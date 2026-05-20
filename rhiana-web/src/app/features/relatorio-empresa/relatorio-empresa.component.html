@@ -80,9 +80,33 @@
         <p class="text-xs text-slate-400 mt-0.5">adicional noturno</p>
       </div>
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Valor Total</p>
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Valor Total Extra</p>
         <p class="text-2xl font-bold text-emerald-600 mt-1">{{ formatCurrency(report().totalExtraValue) }}</p>
         <p class="text-xs text-slate-400 mt-0.5">em horas extras</p>
+      </div>
+    </div>
+
+    <!-- Cards de requerimentos -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-purple-50 rounded-2xl p-4 shadow-sm border border-purple-100">
+        <p class="text-xs font-medium text-purple-600 uppercase tracking-wide">Requerimentos</p>
+        <p class="text-2xl font-bold text-purple-700 mt-1">{{ report().totalRequerimentos ?? 0 }}</p>
+        <p class="text-xs text-purple-400 mt-0.5">aprovados no período</p>
+      </div>
+      <div class="bg-green-50 rounded-2xl p-4 shadow-sm border border-green-100">
+        <p class="text-xs font-medium text-green-600 uppercase tracking-wide">Horas Pagas</p>
+        <p class="text-2xl font-bold text-green-700 mt-1">{{ formatHours(report().totalHorasPagas ?? 0) }}</p>
+        <p class="text-xs text-green-400 mt-0.5">pagamentos aprovados</p>
+      </div>
+      <div class="bg-orange-50 rounded-2xl p-4 shadow-sm border border-orange-100">
+        <p class="text-xs font-medium text-orange-600 uppercase tracking-wide">Horas Compensadas</p>
+        <p class="text-2xl font-bold text-orange-700 mt-1">{{ formatHours(report().totalHorasCompensadas ?? 0) }}</p>
+        <p class="text-xs text-orange-400 mt-0.5">compensações aprovadas</p>
+      </div>
+      <div class="bg-emerald-50 rounded-2xl p-4 shadow-sm border border-emerald-100">
+        <p class="text-xs font-medium text-emerald-600 uppercase tracking-wide">Valor Pago</p>
+        <p class="text-2xl font-bold text-emerald-700 mt-1">{{ formatCurrency(report().totalValorPago ?? 0) }}</p>
+        <p class="text-xs text-emerald-400 mt-0.5">em pagamentos aprovados</p>
       </div>
     </div>
 
@@ -112,6 +136,10 @@
               <th class="text-center py-2 px-2 text-xs font-medium text-indigo-500 uppercase tracking-wide hidden md:table-cell">Noturnas</th>
               <th class="text-right py-2 px-2 text-xs font-medium text-slate-500 uppercase tracking-wide">Total Extra</th>
               <th class="text-right py-2 pl-2 text-xs font-medium text-emerald-600 uppercase tracking-wide hidden lg:table-cell">Valor</th>
+              <th class="text-center py-2 px-2 text-xs font-medium text-purple-500 uppercase tracking-wide hidden xl:table-cell">Req.</th>
+              <th class="text-center py-2 px-2 text-xs font-medium text-green-600 uppercase tracking-wide hidden xl:table-cell">Pago</th>
+              <th class="text-center py-2 px-2 text-xs font-medium text-orange-500 uppercase tracking-wide hidden xl:table-cell">Comp.</th>
+              <th class="text-right py-2 pl-2 text-xs font-medium text-emerald-700 uppercase tracking-wide hidden xl:table-cell">Vlr. Pago</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-50">
@@ -157,6 +185,22 @@
                 <span *ngIf="c.totalValueExtra != null" class="font-bold text-emerald-600">{{ formatCurrency(c.totalValueExtra) }}</span>
                 <span *ngIf="c.totalValueExtra == null" class="text-slate-300 text-xs">Sem valor/h</span>
               </td>
+              <td class="py-3 px-2 text-center hidden xl:table-cell">
+                <span *ngIf="c.requests?.total > 0" class="inline-flex items-center justify-center w-6 h-6 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">{{ c.requests.total }}</span>
+                <span *ngIf="!c.requests?.total" class="text-slate-300">—</span>
+              </td>
+              <td class="py-3 px-2 text-center hidden xl:table-cell">
+                <span *ngIf="c.requests?.horasPagas > 0" class="text-green-600 font-medium text-xs">{{ formatHours(c.requests.horasPagas) }}</span>
+                <span *ngIf="!c.requests?.horasPagas" class="text-slate-300">—</span>
+              </td>
+              <td class="py-3 px-2 text-center hidden xl:table-cell">
+                <span *ngIf="c.requests?.horasCompensadas > 0" class="text-orange-600 font-medium text-xs">{{ formatHours(c.requests.horasCompensadas) }}</span>
+                <span *ngIf="!c.requests?.horasCompensadas" class="text-slate-300">—</span>
+              </td>
+              <td class="py-3 pl-2 text-right hidden xl:table-cell">
+                <span *ngIf="c.requests?.valorPago != null && c.requests.valorPago > 0" class="font-bold text-emerald-700 text-xs">{{ formatCurrency(c.requests.valorPago) }}</span>
+                <span *ngIf="!c.requests?.valorPago" class="text-slate-300">—</span>
+              </td>
             </tr>
           </tbody>
           <tfoot *ngIf="filteredCollaborators.length > 0">
@@ -169,6 +213,10 @@
               <td class="py-3 px-2 text-center font-bold text-indigo-600 hidden md:table-cell">{{ formatHours(filteredTotals.night) }}</td>
               <td class="py-3 px-2 text-right font-bold text-blue-700">{{ formatHours(filteredTotals.extra) }}</td>
               <td class="py-3 pl-2 text-right font-bold text-emerald-700 hidden lg:table-cell">{{ formatCurrency(filteredTotals.value) }}</td>
+              <td class="py-3 px-2 text-center font-bold text-purple-700 hidden xl:table-cell">{{ filteredTotals.requerimentos }}</td>
+              <td class="py-3 px-2 text-center font-bold text-green-700 hidden xl:table-cell">{{ formatHours(filteredTotals.horasPagas) }}</td>
+              <td class="py-3 px-2 text-center font-bold text-orange-700 hidden xl:table-cell">{{ formatHours(filteredTotals.horasCompensadas) }}</td>
+              <td class="py-3 pl-2 text-right font-bold text-emerald-800 hidden xl:table-cell">{{ formatCurrency(filteredTotals.valorPago) }}</td>
             </tr>
           </tfoot>
         </table>
