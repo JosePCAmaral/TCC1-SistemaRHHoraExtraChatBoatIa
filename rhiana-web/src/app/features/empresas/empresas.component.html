@@ -1,0 +1,502 @@
+<div class="space-y-6">
+
+  <!-- Cabeçalho -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800">Empresas</h1>
+      <p class="text-slate-500 text-sm mt-0.5">Gerencie as empresas e acompanhe o desempenho do sistema</p>
+    </div>
+    <button *ngIf="activeTab() === 'lista'"
+      (click)="openCreate()"
+      class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Nova Empresa
+    </button>
+    <button *ngIf="activeTab() === 'relatorios'"
+      (click)="exportarCSV()"
+      class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+      </svg>
+      Exportar CSV
+    </button>
+  </div>
+
+  <!-- Alertas -->
+  <div *ngIf="success()" class="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-medium">
+    {{ success() }}
+  </div>
+  <div *ngIf="error() && !showModal()" class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-medium">
+    {{ error() }}
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex gap-2 border-b border-slate-200">
+    <button
+      (click)="switchTab('lista')"
+      class="px-4 py-2.5 text-sm font-medium transition-colors border-b-2"
+      [class.border-blue-600]="activeTab() === 'lista'"
+      [class.text-blue-600]="activeTab() === 'lista'"
+      [class.border-transparent]="activeTab() !== 'lista'"
+      [class.text-slate-500]="activeTab() !== 'lista'">
+      🏢 Empresas
+    </button>
+    <button
+      (click)="switchTab('relatorios')"
+      class="px-4 py-2.5 text-sm font-medium transition-colors border-b-2"
+      [class.border-blue-600]="activeTab() === 'relatorios'"
+      [class.text-blue-600]="activeTab() === 'relatorios'"
+      [class.border-transparent]="activeTab() !== 'relatorios'"
+      [class.text-slate-500]="activeTab() !== 'relatorios'">
+      📊 Relatórios
+    </button>
+  </div>
+
+  <!-- ═══ ABA: LISTA ═══ -->
+  <div *ngIf="activeTab() === 'lista'" class="space-y-4">
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100">
+
+      <div *ngIf="loading()" class="text-center py-12 text-slate-400">
+        <svg class="animate-spin w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+      </div>
+
+      <div *ngIf="!loading() && empresas().length === 0" class="text-center py-12 text-slate-400">
+        <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+        </svg>
+        <p class="text-sm font-medium">Nenhuma empresa cadastrada</p>
+      </div>
+
+      <div *ngIf="!loading() && empresas().length > 0" class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-slate-100">
+              <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Empresa</th>
+              <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">CNPJ</th>
+              <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Contato</th>
+              <th class="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+              <th class="px-5 py-3.5"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr *ngFor="let empresa of empresas()" class="hover:bg-slate-50 transition-colors">
+              <td class="px-5 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0">
+                    {{ empresa.razaoSocial.charAt(0).toUpperCase() }}
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-slate-800">{{ empresa.nomeFantasia || empresa.razaoSocial }}</p>
+                    <p class="text-xs text-slate-400" *ngIf="empresa.nomeFantasia">{{ empresa.razaoSocial }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="px-5 py-4 hidden md:table-cell">
+                <span class="text-sm text-slate-600 font-mono">{{ empresa.cnpj }}</span>
+              </td>
+              <td class="px-5 py-4 hidden lg:table-cell">
+                <p class="text-sm text-slate-600">{{ empresa.email || '-' }}</p>
+                <p class="text-xs text-slate-400">{{ empresa.telefone || '' }}</p>
+              </td>
+              <td class="px-5 py-4">
+                <span class="px-2.5 py-1 text-xs rounded-full font-medium" [ngClass]="getStatusClass(empresa.status)">
+                  {{ empresa.status === 'ativa' ? '🟢 Ativa' : '🔴 Inativa' }}
+                </span>
+              </td>
+              <td class="px-5 py-4">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button (click)="openCreateAdmin(empresa)" title="Adicionar Usuário"
+                    class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                    </svg>
+                  </button>
+                  <button (click)="openEdit(empresa)" title="Editar"
+                    class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                  </button>
+                  <button (click)="toggleStatus(empresa)" [title]="empresa.status === 'ativa' ? 'Inativar' : 'Ativar'"
+                    class="p-1.5 rounded-lg transition-colors"
+                    [class.text-orange-400]="empresa.status === 'ativa'"
+                    [class.hover:bg-orange-50]="empresa.status === 'ativa'"
+                    [class.text-green-500]="empresa.status !== 'ativa'"
+                    [class.hover:bg-green-50]="empresa.status !== 'ativa'">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                    </svg>
+                  </button>
+                  <button (click)="confirmDelete(empresa.id)" title="Remover"
+                    class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Cards resumo -->
+    <div *ngIf="!loading() && empresas().length > 0" class="grid grid-cols-3 gap-4">
+      <div class="bg-white rounded-xl border border-slate-100 shadow-sm px-5 py-4">
+        <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">Total</p>
+        <p class="text-2xl font-bold text-slate-800 mt-1">{{ empresas().length }}</p>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-100 shadow-sm px-5 py-4">
+        <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">Ativas</p>
+        <p class="text-2xl font-bold text-green-600 mt-1">{{ totalAtivas }}</p>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-100 shadow-sm px-5 py-4">
+        <p class="text-xs text-slate-500 font-medium uppercase tracking-wider">Inativas</p>
+        <p class="text-2xl font-bold text-red-500 mt-1">{{ totalInativas }}</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ ABA: RELATÓRIOS ═══ -->
+  <div *ngIf="activeTab() === 'relatorios'" class="space-y-6">
+
+    <!-- Loading -->
+    <div *ngIf="reportLoading()" class="text-center py-12 text-slate-400">
+      <svg class="animate-spin w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+      </svg>
+      <p class="text-sm">Carregando relatório...</p>
+    </div>
+
+    <div *ngIf="reportError()" class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+      {{ reportError() }}
+    </div>
+
+    <div *ngIf="!reportLoading() && empresaStats().length > 0" class="space-y-6">
+
+      <!-- Cards de totalizadores -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-4 text-center">
+          <p class="text-2xl font-bold text-indigo-600">{{ totalEmpresas }}</p>
+          <p class="text-xs text-slate-500 mt-1 font-medium">Empresas</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-4 text-center">
+          <p class="text-2xl font-bold text-green-600">{{ totalAtivas }}</p>
+          <p class="text-xs text-slate-500 mt-1 font-medium">Ativas</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-4 text-center">
+          <p class="text-2xl font-bold text-red-500">{{ totalInativas }}</p>
+          <p class="text-xs text-slate-500 mt-1 font-medium">Inativas</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-4 text-center">
+          <p class="text-2xl font-bold text-slate-800">{{ totalUsuarios }}</p>
+          <p class="text-xs text-slate-500 mt-1 font-medium">Usuários</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-4 text-center">
+          <p class="text-2xl font-bold text-blue-600">{{ totalUsuariosAtivos }}</p>
+          <p class="text-xs text-slate-500 mt-1 font-medium">Usuários Ativos</p>
+        </div>
+      </div>
+
+      <!-- Tabela detalhada por empresa -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 class="text-base font-semibold text-slate-800">Detalhamento por Empresa</h2>
+          <span class="text-xs text-slate-400">{{ empresaStats().length }} empresa(s)</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-slate-100 bg-slate-50">
+                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Empresa</th>
+                <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ativos</th>
+                <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Inativos</th>
+                <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Admin</th>
+                <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">RH</th>
+                <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Colab.</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider hidden lg:table-cell">Ocupação</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr *ngFor="let s of empresaStats()" class="hover:bg-slate-50 transition-colors">
+                <td class="px-5 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0">
+                      {{ s.empresa.razaoSocial.charAt(0).toUpperCase() }}
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-slate-800">{{ s.empresa.nomeFantasia || s.empresa.razaoSocial }}</p>
+                      <p class="text-xs text-slate-400 font-mono">{{ s.empresa.cnpj }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                  <span class="px-2 py-0.5 text-xs rounded-full font-medium" [ngClass]="getStatusClass(s.empresa.status)">
+                    {{ s.empresa.status === 'ativa' ? 'Ativa' : 'Inativa' }}
+                  </span>
+                </td>
+                <td class="px-4 py-4 text-center">
+                  <span class="text-sm font-semibold text-slate-800">{{ s.totalUsers }}</span>
+                </td>
+                <td class="px-4 py-4 text-center">
+                  <span class="text-sm font-medium text-green-600">{{ s.usersAtivos }}</span>
+                </td>
+                <td class="px-4 py-4 text-center">
+                  <span class="text-sm font-medium" [class.text-red-500]="s.usersInativos > 0" [class.text-slate-400]="s.usersInativos === 0">{{ s.usersInativos }}</span>
+                </td>
+                <td class="px-4 py-4 text-center">
+                  <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold bg-purple-100 text-purple-700">{{ s.adminCount }}</span>
+                </td>
+                <td class="px-4 py-4 text-center">
+                  <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold bg-blue-100 text-blue-700">{{ s.rhCount }}</span>
+                </td>
+                <td class="px-4 py-4 text-center">
+                  <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold bg-green-100 text-green-700">{{ s.colaboradorCount }}</span>
+                </td>
+                <!-- Barra de ocupação (ativos/total) -->
+                <td class="px-4 py-4 hidden lg:table-cell">
+                  <div class="flex items-center gap-2 min-w-[120px]">
+                    <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div class="h-full bg-blue-500 rounded-full transition-all"
+                        [style.width]="getBarWidth(s.usersAtivos, s.totalUsers)"></div>
+                    </div>
+                    <span class="text-xs text-slate-500 shrink-0">{{ getBarWidth(s.usersAtivos, s.totalUsers) }}</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+            <!-- Totais -->
+            <tfoot class="bg-slate-50 border-t-2 border-slate-200">
+              <tr>
+                <td class="px-5 py-3">
+                  <span class="text-sm font-bold text-slate-700">TOTAL</span>
+                </td>
+                <td></td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-sm font-bold text-slate-800">{{ totalUsuarios }}</span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-sm font-bold text-green-700">{{ totalUsuariosAtivos }}</span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <span class="text-sm font-bold text-red-600">{{ totalUsuarios - totalUsuariosAtivos }}</span>
+                </td>
+                <td colspan="4"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Gráfico de barras horizontal por empresa -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+        <h2 class="text-base font-semibold text-slate-800 mb-4">Distribuição de Usuários por Empresa</h2>
+        <div class="space-y-4">
+          <div *ngFor="let s of empresaStats()" class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-slate-700">{{ s.empresa.nomeFantasia || s.empresa.razaoSocial }}</span>
+              <span class="text-xs text-slate-500">{{ s.totalUsers }} usuário(s)</span>
+            </div>
+            <div class="flex gap-1 h-5 rounded-lg overflow-hidden bg-slate-100">
+              <div *ngIf="s.adminCount > 0"
+                class="bg-purple-500 flex items-center justify-center text-white text-xs font-bold transition-all"
+                [style.width]="getBarWidth(s.adminCount, s.totalUsers)"
+                title="Admin: {{ s.adminCount }}">
+                <span *ngIf="s.adminCount > 1">{{ s.adminCount }}</span>
+              </div>
+              <div *ngIf="s.rhCount > 0"
+                class="bg-blue-500 flex items-center justify-center text-white text-xs font-bold transition-all"
+                [style.width]="getBarWidth(s.rhCount, s.totalUsers)"
+                title="RH: {{ s.rhCount }}">
+                <span *ngIf="s.rhCount > 1">{{ s.rhCount }}</span>
+              </div>
+              <div *ngIf="s.colaboradorCount > 0"
+                class="bg-green-500 flex items-center justify-center text-white text-xs font-bold transition-all"
+                [style.width]="getBarWidth(s.colaboradorCount, s.totalUsers)"
+                title="Colaboradores: {{ s.colaboradorCount }}">
+                <span *ngIf="s.colaboradorCount > 1">{{ s.colaboradorCount }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Legenda -->
+        <div class="flex items-center gap-6 mt-4 pt-4 border-t border-slate-100">
+          <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-purple-500"></div><span class="text-xs text-slate-600">Admin</span></div>
+          <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-blue-500"></div><span class="text-xs text-slate-600">RH</span></div>
+          <div class="flex items-center gap-2"><div class="w-3 h-3 rounded bg-green-500"></div><span class="text-xs text-slate-600">Colaborador</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal Criar/Editar -->
+<div *ngIf="showModal()" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  <div class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm" (click)="closeModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg z-10 max-h-[90vh] overflow-y-auto">
+
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-lg font-bold text-slate-800">{{ editingEmpresa() ? 'Editar Empresa' : 'Nova Empresa' }}</h3>
+      <button (click)="closeModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div *ngIf="error()" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+      {{ error() }}
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="sm:col-span-2">
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Razão Social <span class="text-red-500">*</span></label>
+        <input type="text" [(ngModel)]="form.razaoSocial" placeholder="Ex: ACME Tecnologia Ltda"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Nome Fantasia</label>
+        <input type="text" [(ngModel)]="form.nomeFantasia" placeholder="Ex: ACME Tech"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">CNPJ <span class="text-red-500">*</span></label>
+        <input type="text" [(ngModel)]="form.cnpj" placeholder="00.000.000/0000-00"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">E-mail</label>
+        <input type="email" [(ngModel)]="form.email" placeholder="contato@empresa.com"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Telefone</label>
+        <input type="text" [(ngModel)]="form.telefone" placeholder="(00) 0000-0000"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div class="sm:col-span-2">
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Endereço</label>
+        <input type="text" [(ngModel)]="form.endereco" placeholder="Rua, Número, Cidade-UF"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div class="sm:col-span-2">
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">URL do Logotipo</label>
+        <input type="text" [(ngModel)]="form.logo" placeholder="https://empresa.com/logo.png"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+    </div>
+
+    <div class="flex gap-3 mt-6">
+      <button (click)="closeModal()"
+        class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors">
+        Cancelar
+      </button>
+      <button (click)="save()"
+        class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors">
+        {{ editingEmpresa() ? 'Salvar Alterações' : 'Criar Empresa' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Criar Usuário da Empresa -->
+<div *ngIf="showAdminModal()" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  <div class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm" (click)="closeAdminModal()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md z-10">
+
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h3 class="text-lg font-bold text-slate-800">Adicionar Usuário</h3>
+        <p class="text-xs text-slate-400 mt-0.5">
+          {{ adminModalEmpresa()?.nomeFantasia || adminModalEmpresa()?.razaoSocial }}
+        </p>
+      </div>
+      <button (click)="closeAdminModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div *ngIf="adminError()" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+      {{ adminError() }}
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Nome completo <span class="text-red-500">*</span></label>
+        <input type="text" [(ngModel)]="adminForm.name" placeholder="Ex: Maria Souza"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">E-mail <span class="text-red-500">*</span></label>
+        <input type="email" [(ngModel)]="adminForm.email" placeholder="maria@empresa.com"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Senha temporária <span class="text-red-500">*</span></label>
+        <input type="password" [(ngModel)]="adminForm.password" placeholder="mínimo 6 caracteres"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Perfil de acesso</label>
+        <select [(ngModel)]="adminForm.role"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="admin">Admin — gerencia usuários e parâmetros</option>
+          <option value="rh">RH — aprova solicitações e acessa relatórios</option>
+          <option value="colaborador">Colaborador — bate ponto e abre solicitações</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="flex gap-3 mt-6">
+      <button (click)="closeAdminModal()"
+        class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors">
+        Cancelar
+      </button>
+      <button (click)="saveAdmin()" [disabled]="adminSaving()"
+        class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors">
+        {{ adminSaving() ? 'Criando...' : 'Criar Usuário' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Confirmar Exclusão -->
+<div *ngIf="confirmDeleteId() !== null" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  <div class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm" (click)="cancelDelete()"></div>
+  <div class="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm z-10">
+    <div class="text-center">
+      <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-slate-800 mb-2">Remover empresa?</h3>
+      <p class="text-sm text-slate-500 mb-6">Esta ação não pode ser desfeita. Usuários vinculados perderão o vínculo com esta empresa.</p>
+      <div class="flex gap-3">
+        <button (click)="cancelDelete()"
+          class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-colors">
+          Cancelar
+        </button>
+        <button (click)="remove(confirmDeleteId()!)"
+          class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors">
+          Remover
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
