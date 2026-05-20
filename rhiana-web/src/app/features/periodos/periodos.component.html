@@ -1,0 +1,362 @@
+<div class="space-y-6">
+
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800">Períodos</h1>
+      <p class="text-slate-500 text-sm mt-0.5">Gerencie ciclos de trabalho, fechamentos e emendas</p>
+    </div>
+    <button (click)="openModal('criar')"
+      class="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Novo Período
+    </button>
+  </div>
+
+  <!-- Alertas -->
+  <div *ngIf="success()" class="p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-medium">{{ success() }}</div>
+  <div *ngIf="error() && !modal()" class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ error() }}</div>
+
+  <!-- Período ativo em destaque -->
+  <div *ngIf="periodoAtivo" class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-5 text-white shadow-lg">
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-blue-200 text-xs uppercase tracking-wide font-medium">Período Ativo</p>
+        <h2 class="text-xl font-bold mt-0.5">{{ periodoAtivo.nome }}</h2>
+        <p class="text-blue-200 text-sm mt-1">
+          {{ formatDate(periodoAtivo.startDate) }} até {{ formatDate(periodoAtivo.endDate) }}
+        </p>
+      </div>
+      <button (click)="openModal('fechar', periodoAtivo)"
+        class="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-xl text-sm font-medium border border-white border-opacity-30 transition-all">
+        Fechar Período
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading()" class="text-center py-12 text-slate-400">
+    <svg class="animate-spin w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+    </svg>
+    <p class="text-sm">Carregando...</p>
+  </div>
+
+  <!-- Lista de períodos -->
+  <div *ngIf="!loading()" class="bg-white rounded-2xl shadow-sm border border-slate-100">
+    <div class="px-5 py-4 border-b border-slate-100">
+      <h3 class="font-semibold text-slate-800">Histórico de Períodos</h3>
+    </div>
+    <div class="divide-y divide-slate-50">
+      <div *ngFor="let p of periodos()" class="px-5 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            [class.bg-blue-100]="p.status === 'ativo'"
+            [class.bg-slate-100]="p.status === 'fechado'">
+            <svg class="w-5 h-5" [class.text-blue-600]="p.status === 'ativo'" [class.text-slate-400]="p.status === 'fechado'"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <p class="font-semibold text-slate-800">{{ p.nome }}</p>
+              <span *ngIf="p.status === 'ativo'" class="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full font-medium">Ativo</span>
+              <span *ngIf="p.status === 'fechado'" class="px-2 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full font-medium">Fechado</span>
+              <span *ngIf="p.hasAmendments" class="px-2 py-0.5 text-xs bg-amber-100 text-amber-700 rounded-full font-medium">
+                ⚠️ {{ p.amendmentCount }} emenda(s)
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">
+              {{ formatDate(p.startDate) }} — {{ formatDate(p.endDate) }}
+              <span *ngIf="p.closedAt"> · Fechado em {{ formatDate(p.closedAt.split('T')[0]) }}</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button *ngIf="p.status === 'fechado'" (click)="openModal('relatorio', p)"
+            class="px-3 py-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg font-medium transition-colors">
+            Relatório
+          </button>
+          <button *ngIf="p.status === 'fechado'" (click)="openModal('saldos', p)"
+            class="px-3 py-1.5 text-xs bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg font-medium transition-colors">
+            Saldos
+          </button>
+          <button *ngIf="p.status === 'fechado'" (click)="openModal('emendar', p)"
+            class="px-3 py-1.5 text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg font-medium transition-colors">
+            Emendar
+          </button>
+          <button *ngIf="p.hasAmendments" (click)="openModal('emendas', p)"
+            class="px-3 py-1.5 text-xs bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg font-medium transition-colors">
+            Ver emendas
+          </button>
+        </div>
+      </div>
+      <div *ngIf="periodos().length === 0" class="px-5 py-10 text-center text-slate-400 text-sm">
+        Nenhum período criado ainda. Clique em "Novo Período" para começar.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ───────── MODAL CRIAR ───────── -->
+<div *ngIf="modal() === 'criar'" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-800">Novo Período</h2>
+    <div *ngIf="error()" class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ error() }}</div>
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1.5">Nome do período</label>
+      <input type="text" [(ngModel)]="createForm.nome" placeholder="Ex: Maio/2026"
+        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Data início</label>
+        <input type="date" [(ngModel)]="createForm.startDate"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Data fim</label>
+        <input type="date" [(ngModel)]="createForm.endDate"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+    </div>
+    <div class="flex gap-3 pt-2">
+      <button (click)="closeModal()" class="flex-1 py-2.5 border border-slate-300 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors">Cancelar</button>
+      <button (click)="criar()" [disabled]="actionLoading()"
+        class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60">
+        {{ actionLoading() ? 'Criando...' : 'Criar Período' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ───────── MODAL FECHAR ───────── -->
+<div *ngIf="modal() === 'fechar'" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-800">Fechar Período</h2>
+    <div *ngIf="error()" class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ error() }}</div>
+    <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 space-y-2">
+      <p class="font-semibold">Ao fechar "{{ selectedPeriodo()?.nome }}":</p>
+      <ul class="list-disc list-inside space-y-1 text-xs">
+        <li>Um snapshot do relatório será congelado</li>
+        <li>Os saldos de cada colaborador serão calculados e salvos</li>
+        <li>Registros de ponto neste período serão bloqueados para edição</li>
+        <li>Um novo período será criado automaticamente (editável depois)</li>
+        <li>Horas extras não quitadas serão transferidas como saldo anterior</li>
+      </ul>
+    </div>
+    <div class="flex gap-3 pt-2">
+      <button (click)="closeModal()" class="flex-1 py-2.5 border border-slate-300 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors">Cancelar</button>
+      <button (click)="fechar()" [disabled]="actionLoading()"
+        class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60">
+        {{ actionLoading() ? 'Fechando...' : 'Confirmar Fechamento' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ───────── MODAL EMENDAR ───────── -->
+<div *ngIf="modal() === 'emendar'" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+    <div>
+      <h2 class="text-lg font-bold text-slate-800">Registrar Emenda</h2>
+      <p class="text-xs text-slate-500 mt-0.5">Período: {{ selectedPeriodo()?.nome }} ({{ formatDate(selectedPeriodo()?.startDate ?? '') }} — {{ formatDate(selectedPeriodo()?.endDate ?? '') }})</p>
+    </div>
+    <div class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-700 text-xs">
+      ⚠️ A emenda criará um registro de ponto retroativo e recalculará os saldos do colaborador afetado.
+    </div>
+    <div *ngIf="error()" class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{{ error() }}</div>
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1.5">Colaborador *</label>
+      <select [(ngModel)]="amendForm.userId"
+        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">Selecione...</option>
+        <option *ngFor="let u of users()" [value]="u.id">{{ u.name }} — {{ u.department ?? 'Sem depto' }}</option>
+      </select>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Data *</label>
+        <input type="date" [(ngModel)]="amendForm.date"
+          [min]="selectedPeriodo()?.startDate" [max]="selectedPeriodo()?.endDate"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Horário *</label>
+        <input type="time" [(ngModel)]="amendForm.time"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Tipo de registro *</label>
+        <select [(ngModel)]="amendForm.type"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="entrada">Entrada</option>
+          <option value="saida">Saída</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Tipo de dia</label>
+        <select [(ngModel)]="amendForm.dayType"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="util">Dia útil</option>
+          <option value="sabado">Sábado</option>
+          <option value="domingo">Domingo</option>
+          <option value="feriado">Feriado</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1.5">Observação do registro</label>
+      <input type="text" [(ngModel)]="amendForm.observation" placeholder="Ex: Esqueceu de bater ponto"
+        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1.5">Justificativa da emenda *</label>
+      <textarea [(ngModel)]="amendForm.description" rows="2" placeholder="Motivo pelo qual a emenda está sendo feita..."
+        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+    </div>
+    <div class="flex gap-3 pt-2">
+      <button (click)="closeModal()" class="flex-1 py-2.5 border border-slate-300 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors">Cancelar</button>
+      <button (click)="emendar()" [disabled]="actionLoading()"
+        class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60">
+        {{ actionLoading() ? 'Registrando...' : 'Registrar Emenda' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ───────── MODAL RELATÓRIO ───────── -->
+<div *ngIf="modal() === 'relatorio' && relatorioData()" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-slate-800">Relatório de Fechamento</h2>
+        <p class="text-xs text-slate-500 mt-0.5">{{ relatorioData().periodo.nome }} · Gerado em {{ relatorioData().report.generatedAt | date:'dd/MM/yyyy HH:mm' }}</p>
+      </div>
+      <button (click)="closeModal()" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div *ngIf="relatorioData().periodo.hasAmendments" class="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-700 text-xs">
+      ⚠️ Este relatório foi emendado {{ relatorioData().periodo.amendmentCount }} vez(es). Os dados refletem o estado atual após as emendas.
+    </div>
+
+    <!-- Totais -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="bg-slate-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-slate-500">Colaboradores</p>
+        <p class="text-xl font-bold text-slate-800 mt-0.5">{{ relatorioData().report.totals.totalCollaborators }}</p>
+      </div>
+      <div class="bg-blue-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-blue-600">Saldo a Transferir</p>
+        <p class="text-xl font-bold text-blue-700 mt-0.5">{{ formatHours(relatorioData().report.totals.totalBalanceHours) }}</p>
+      </div>
+      <div class="bg-indigo-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-indigo-600">Horas Noturnas</p>
+        <p class="text-xl font-bold text-indigo-700 mt-0.5">{{ formatHours(relatorioData().report.totals.totalNightHours ?? 0) }}</p>
+      </div>
+      <div class="bg-emerald-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-emerald-600">Valor Total</p>
+        <p class="text-xl font-bold text-emerald-700 mt-0.5">{{ formatCurrency(relatorioData().report.totals.totalBalanceValue) }}</p>
+      </div>
+    </div>
+
+    <!-- Por colaborador -->
+    <div class="divide-y divide-slate-50">
+      <div *ngFor="let c of relatorioData().report.collaborators" class="py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0">
+            {{ c.name.charAt(0).toUpperCase() }}
+          </div>
+          <div>
+            <p class="text-sm font-medium text-slate-800">{{ c.name }}</p>
+            <p class="text-xs text-slate-400">{{ c.department ?? 'Sem depto' }} · {{ c.position ?? 'Sem cargo' }}</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <p class="text-sm font-bold text-blue-600">{{ formatHours(c.balanceTotalExtraHours) }}</p>
+          <p class="text-xs text-slate-400">{{ formatCurrency(c.balanceExtraValue + c.balanceNightValue) }}</p>
+        </div>
+      </div>
+    </div>
+
+    <button (click)="closeModal()" class="w-full py-2.5 border border-slate-300 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors">
+      Fechar
+    </button>
+  </div>
+</div>
+
+<!-- ───────── MODAL SALDOS ───────── -->
+<div *ngIf="modal() === 'saldos'" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-slate-800">Saldos — {{ selectedPeriodo()?.nome }}</h2>
+      <button (click)="closeModal()" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="divide-y divide-slate-50">
+      <div *ngFor="let b of saldosData()" class="py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 text-xs font-bold shrink-0">
+            {{ b.name.charAt(0).toUpperCase() }}
+          </div>
+          <div>
+            <p class="text-sm font-medium text-slate-800">{{ b.name }}</p>
+            <p class="text-xs text-slate-400">{{ b.department ?? '—' }}</p>
+          </div>
+        </div>
+        <div class="text-right text-xs space-y-0.5">
+          <p *ngIf="b.extraHours50 > 0" class="text-orange-600">50%: {{ formatHours(b.extraHours50) }}</p>
+          <p *ngIf="b.extraHours60 > 0" class="text-amber-600">60%: {{ formatHours(b.extraHours60) }}</p>
+          <p *ngIf="b.extraHours100 > 0" class="text-red-600">100%: {{ formatHours(b.extraHours100) }}</p>
+          <p *ngIf="b.nightHours > 0" class="text-indigo-600">Noturnas: {{ formatHours(b.nightHours) }}</p>
+          <p class="font-bold text-blue-600">{{ formatHours(b.totalExtraHours) }} → {{ formatCurrency(b.extraValue + b.nightValue) }}</p>
+        </div>
+      </div>
+      <div *ngIf="saldosData().length === 0" class="py-6 text-center text-slate-400 text-sm">Nenhum saldo encontrado</div>
+    </div>
+    <button (click)="closeModal()" class="w-full py-2.5 border border-slate-300 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors">Fechar</button>
+  </div>
+</div>
+
+<!-- ───────── MODAL EMENDAS ───────── -->
+<div *ngIf="modal() === 'emendas'" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-slate-800">Emendas — {{ selectedPeriodo()?.nome }}</h2>
+      <button (click)="closeModal()" class="text-slate-400 hover:text-slate-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="space-y-3">
+      <div *ngFor="let a of emendasData()" class="p-4 bg-amber-50 border border-amber-100 rounded-xl">
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-sm font-medium text-slate-800">{{ a.colaborador }}</p>
+            <p class="text-xs text-slate-500 mt-0.5">{{ a.description }}</p>
+            <p class="text-xs text-slate-400 mt-1">Registrado por: {{ a.admin }} · {{ a.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+          </div>
+          <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Emenda #{{ a.id }}</span>
+        </div>
+      </div>
+      <div *ngIf="emendasData().length === 0" class="text-center py-6 text-slate-400 text-sm">Nenhuma emenda registrada</div>
+    </div>
+    <button (click)="closeModal()" class="w-full py-2.5 border border-slate-300 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors">Fechar</button>
+  </div>
+</div>

@@ -16,7 +16,7 @@ export class AdminComponent implements OnInit {
   success = signal('');
   error = signal('');
 
-  activeTab = signal<'users' | 'network' | 'parameters'>('users');
+  activeTab = signal<'users' | 'import'>('users');
 
   showUserModal = signal(false);
   editingUser = signal<User | null>(null);
@@ -25,7 +25,7 @@ export class AdminComponent implements OnInit {
     name: '',
     email: '',
     password: '',
-    role: 'colaborador' as 'colaborador' | 'rh' | 'admin',
+    role: 'colaborador' as 'colaborador' | 'rh' | 'admin' | 'super_admin',
     cpf: '',
     department: '',
     position: '',
@@ -34,6 +34,13 @@ export class AdminComponent implements OnInit {
     workEndTime: '17:00',
     hourlyRate: 0,
   };
+
+  // Importação via JSON
+  importPreview = signal<any[]>([]);
+  importResult = signal<{ imported: number; errors: Array<{ row: number; email: string; reason: string }> } | null>(null);
+  importLoading = signal(false);
+  importError = signal('');
+  isDragging = signal(false);
 
   constructor(private usersService: UsersService) {}
 
@@ -76,7 +83,7 @@ export class AdminComponent implements OnInit {
       name: user.name,
       email: user.email,
       password: '',
-      role: user.role,
+      role: user.role as 'colaborador' | 'rh' | 'admin' | 'super_admin',
       cpf: user.cpf ?? '',
       department: user.department ?? '',
       position: user.position ?? '',
@@ -145,6 +152,86 @@ export class AdminComponent implements OnInit {
       },
       error: () => this.error.set('Erro ao atualizar status'),
     });
+  }
+
+  onFileChange(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) this.readFile(file);
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    this.isDragging.set(true);
+  }
+
+  onDragLeave() {
+    this.isDragging.set(false);
+  }
+
+  onDrop(event: DragEvent) {
+    event.preventDefault();
+    this.isDragging.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) this.readFile(file);
+  }
+
+  private readFile(file: File) {
+    this.importPreview.set([]);
+    this.importResult.set(null);
+    this.importError.set('');
+
+    if (!file.name.endsWith('.json')) {
+      this.importError.set('Somente arquivos .json são aceitos');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (!Array.isArray(data)) {
+          this.importError.set('O arquivo deve conter um array JSON (ex: [{ "name": "...", ... }])');
+          return;
+        }
+        this.importPreview.set(data);
+      } catch {
+        this.importError.set('Arquivo JSON inválido. Verifique a estrutura do arquivo.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  confirmImport() {
+    const users = this.importPreview();
+    if (!users.length) return;
+
+    this.importLoading.set(true);
+    this.importError.set('');
+
+    this.usersService.importUsers(users).subscribe({
+      next: (result) => {
+        this.importResult.set(result);
+        this.importLoading.set(false);
+        if (result.imported > 0) {
+          this.loadUsers();
+          this.importPreview.set([]);
+        }
+      },
+      error: (err) => {
+        this.importLoading.set(false);
+        this.importError.set(err.error?.message ?? 'Erro ao importar usuários');
+      },
+    });
+  }
+
+  clearImport() {
+    this.importPreview.set([]);
+    this.importResult.set(null);
+    this.importError.set('');
+  }
+
+  downloadTemplate() {
+    this.usersService.downloadTemplate();
   }
 
   getRoleClass(role: string): string {

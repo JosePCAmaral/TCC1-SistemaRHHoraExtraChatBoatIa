@@ -54,6 +54,18 @@ export class SidebarComponent {
       roles: ['rh', 'admin'],
     },
     {
+      label: 'Meu Relatório',
+      route: '/meu-relatorio',
+      icon: 'myreport',
+      roles: ['colaborador'],
+    },
+    {
+      label: 'Relatório da Empresa',
+      route: '/relatorio-empresa',
+      icon: 'company-report',
+      roles: ['admin'],
+    },
+    {
       label: 'Administração',
       route: '/admin',
       icon: 'admin',
@@ -64,6 +76,18 @@ export class SidebarComponent {
       route: '/parametros',
       icon: 'parameters',
       roles: ['admin'],
+    },
+    {
+      label: 'Períodos',
+      route: '/periodos',
+      icon: 'periodos',
+      roles: ['admin'],
+    },
+    {
+      label: 'Empresas',
+      route: '/empresas',
+      icon: 'empresas',
+      roles: ['super_admin'],
     },
   ];
 

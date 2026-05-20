@@ -55,8 +55,12 @@ export class AuthService {
     return localStorage.getItem('token');
   }
 
+  isSuperAdmin(): boolean {
+    return this.currentUser()?.role === 'super_admin';
+  }
+
   isAdmin(): boolean {
-    return this.currentUser()?.role === 'admin';
+    return this.currentUser()?.role === 'admin' || this.isSuperAdmin();
   }
 
   isRH(): boolean {

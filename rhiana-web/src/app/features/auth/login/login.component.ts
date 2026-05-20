@@ -18,8 +18,13 @@ export class LoginComponent {
 
   constructor(private authService: AuthService, private router: Router) {
     if (this.authService.isAuthenticated()) {
-      this.router.navigate(['/dashboard']);
+      this.redirectByRole();
     }
+  }
+
+  private redirectByRole(): void {
+    const dest = this.authService.isSuperAdmin() ? '/empresas' : '/dashboard';
+    this.router.navigate([dest]);
   }
 
   onSubmit(): void {
@@ -34,7 +39,7 @@ export class LoginComponent {
     this.authService.login(this.email, this.password).subscribe({
       next: () => {
         this.loading.set(false);
-        this.router.navigate(['/dashboard']);
+        this.redirectByRole();
       },
       error: (err) => {
         this.loading.set(false);

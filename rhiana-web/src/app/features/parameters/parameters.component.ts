@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { ParametersService, Parameter } from '../../core/services/parameters.service';
 
 type TabType = 'clt' | 'feriados';
@@ -30,6 +31,14 @@ export class ParametersComponent implements OnInit {
   newFeriado = { date: '', name: '' };
   savingFeriado = signal(false);
   deletingId = signal<number | null>(null);
+
+  // Importação de feriados
+  showImportPanel = signal(false);
+  isDraggingFeriado = signal(false);
+  feriadoImportPreview = signal<Array<{ date: string; name: string }>>([]);
+  feriadoImportResult = signal<{ imported: number; errors: Array<{ row: number; date: string; reason: string }> } | null>(null);
+  feriadoImportLoading = signal(false);
+  feriadoImportError = signal('');
 
   constructor(private parametersService: ParametersService) {}
 
@@ -178,6 +187,133 @@ export class ParametersComponent implements OnInit {
     if (!date) return '';
     const [y, m, d] = date.split('-');
     return `${d}/${m}/${y}`;
+  }
+
+  openImportPanel() {
+    this.showImportPanel.set(true);
+    this.clearFeriadoImport();
+  }
+
+  closeImportPanel() {
+    this.showImportPanel.set(false);
+    this.clearFeriadoImport();
+  }
+
+  onFeriadoDragOver(event: DragEvent) {
+    event.preventDefault();
+    this.isDraggingFeriado.set(true);
+  }
+
+  onFeriadoDragLeave() {
+    this.isDraggingFeriado.set(false);
+  }
+
+  onFeriadoDrop(event: DragEvent) {
+    event.preventDefault();
+    this.isDraggingFeriado.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) this.readFeriadoFile(file);
+  }
+
+  onFeriadoFileChange(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) this.readFeriadoFile(file);
+  }
+
+  private readFeriadoFile(file: File) {
+    this.feriadoImportPreview.set([]);
+    this.feriadoImportResult.set(null);
+    this.feriadoImportError.set('');
+
+    if (!file.name.endsWith('.json')) {
+      this.feriadoImportError.set('Somente arquivos .json são aceitos');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (!Array.isArray(data)) {
+          this.feriadoImportError.set('O arquivo deve conter um array JSON');
+          return;
+        }
+        const hasInvalid = data.some(d => !d.date || !d.name);
+        if (hasInvalid) {
+          this.feriadoImportError.set('Todos os itens devem ter os campos "date" (YYYY-MM-DD) e "name"');
+          return;
+        }
+        this.feriadoImportPreview.set(data);
+      } catch {
+        this.feriadoImportError.set('Arquivo JSON inválido. Verifique a estrutura do arquivo.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  async confirmFeriadoImport() {
+    const items = this.feriadoImportPreview();
+    if (!items.length) return;
+
+    this.feriadoImportLoading.set(true);
+    this.feriadoImportError.set('');
+
+    const errors: Array<{ row: number; date: string; reason: string }> = [];
+    let imported = 0;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      try {
+        await firstValueFrom(this.parametersService.create({
+          key: `FERIADO_${item.date}`,
+          value: item.name,
+          description: `Feriado em ${this.formatDate(item.date)}`,
+          type: 'feriado',
+          active: true,
+        }));
+        imported++;
+      } catch (err: any) {
+        errors.push({
+          row: i + 1,
+          date: item.date,
+          reason: err?.error?.message ?? 'Erro ao cadastrar (data já pode existir)',
+        });
+      }
+    }
+
+    this.feriadoImportResult.set({ imported, errors });
+    this.feriadoImportLoading.set(false);
+    this.feriadoImportPreview.set([]);
+
+    if (imported > 0) this.loadAll();
+  }
+
+  clearFeriadoImport() {
+    this.feriadoImportPreview.set([]);
+    this.feriadoImportResult.set(null);
+    this.feriadoImportError.set('');
+  }
+
+  downloadFeriadoTemplate() {
+    const template = [
+      { date: '2025-01-01', name: 'Confraternização Universal' },
+      { date: '2025-04-18', name: 'Sexta-feira Santa' },
+      { date: '2025-04-21', name: 'Tiradentes' },
+      { date: '2025-05-01', name: 'Dia do Trabalhador' },
+      { date: '2025-06-19', name: 'Corpus Christi' },
+      { date: '2025-09-07', name: 'Independência do Brasil' },
+      { date: '2025-10-12', name: 'Nossa Senhora Aparecida' },
+      { date: '2025-11-02', name: 'Finados' },
+      { date: '2025-11-15', name: 'Proclamação da República' },
+      { date: '2025-12-25', name: 'Natal' },
+    ];
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'template-feriados.json';
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   private clearMessages() {

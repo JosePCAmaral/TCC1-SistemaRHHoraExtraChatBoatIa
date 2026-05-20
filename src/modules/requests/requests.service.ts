@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, In } from 'typeorm';
 import { Request, RequestStatus } from './entities/request.entity';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { ReviewRequestDto } from './dto/review-request.dto';
 import { User } from '../users/entities/user.entity';
 import { HourRecord, RecordType } from '../hours/entities/hour-record.entity';
+import { ParametersService } from '../parameters/parameters.service';
+
+const DEFAULT_ADICIONAL_NOTURNO_PERCENT = 20;
 
 @Injectable()
 export class RequestsService {
@@ -16,15 +19,61 @@ export class RequestsService {
     private userRepository: Repository<User>,
     @InjectRepository(HourRecord)
     private hourRecordRepository: Repository<HourRecord>,
+    private parametersService: ParametersService,
   ) {}
 
+  private async getNightMultiplier(): Promise<number> {
+    const raw = await this.parametersService.getValue(
+      'ADICIONAL_NOTURNO',
+      undefined,
+      String(DEFAULT_ADICIONAL_NOTURNO_PERCENT),
+    );
+    return (Number(raw) || DEFAULT_ADICIONAL_NOTURNO_PERCENT) / 100;
+  }
+
   async create(userId: number, dto: CreateRequestDto): Promise<Request> {
+    await this.validateBalance(userId, dto.hoursAmount);
+
     const request = this.requestRepository.create({
       ...dto,
       userId,
       status: RequestStatus.PENDENTE,
     });
     return this.requestRepository.save(request);
+  }
+
+  private async validateBalance(userId: number, hoursRequested: number): Promise<void> {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const records = await this.hourRecordRepository.find({
+      where: { userId, date: Between(startDate, endDate) },
+    });
+    const saidas = records.filter(r => r.type === RecordType.SAIDA);
+    const totalAvailable = saidas.reduce(
+      (sum, r) =>
+        sum +
+        Number(r.extraHours50) +
+        Number((r as any).extraHours60 ?? 0) +
+        Number(r.extraHours100),
+      0,
+    );
+
+    const existingRequests = await this.requestRepository.find({
+      where: { userId, status: In([RequestStatus.PENDENTE, RequestStatus.APROVADO]) },
+    });
+    const alreadyRequested = existingRequests.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
+
+    const available = +(totalAvailable - alreadyRequested).toFixed(2);
+    if (hoursRequested > available) {
+      throw new BadRequestException(
+        `Saldo insuficiente. Disponível: ${available}h, solicitado: ${hoursRequested}h`,
+      );
+    }
   }
 
   async findAll(): Promise<Request[]> {
@@ -98,7 +147,7 @@ export class RequestsService {
       throw new BadRequestException('Só é possível cancelar solicitações pendentes');
     }
 
-    request.status = RequestStatus.REJEITADO;
+    request.status = RequestStatus.CANCELADO;
     request.reviewerComment = 'Cancelado pelo colaborador';
     request.reviewedAt = new Date();
 
@@ -138,10 +187,11 @@ export class RequestsService {
     const totalExtraHours = totalExtraHours50 + totalExtraHours60 + totalExtraHours100;
     const hourlyRate = Number(user.hourlyRate ?? 0);
 
+    const nightMultiplier = await this.getNightMultiplier();
     const extra50Value = totalExtraHours50 * hourlyRate * 1.5;
     const extra60Value = totalExtraHours60 * hourlyRate * 1.6;
     const extra100Value = totalExtraHours100 * hourlyRate * 2.0;
-    const nightValue = totalNightHours * hourlyRate * 0.2;
+    const nightValue = totalNightHours * hourlyRate * nightMultiplier;
     const totalValue = extra50Value + extra60Value + extra100Value + nightValue;
 
     return {

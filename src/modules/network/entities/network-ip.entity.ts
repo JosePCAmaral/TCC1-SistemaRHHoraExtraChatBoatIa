@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { Empresa } from '../../empresas/entities/empresa.entity';
 
 @Entity('network_ips')
 export class NetworkIp {
@@ -16,6 +25,14 @@ export class NetworkIp {
 
   @Column({ nullable: true })
   description: string;
+
+  // NULL = IP global (válido para todas as empresas); número = restrito à empresa
+  @Column({ nullable: true })
+  empresaId: number;
+
+  @ManyToOne(() => Empresa, { nullable: true, eager: false })
+  @JoinColumn({ name: 'empresaId' })
+  empresa: Empresa;
 
   @CreateDateColumn()
   createdAt: Date;

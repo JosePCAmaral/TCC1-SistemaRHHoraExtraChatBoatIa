@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Patch, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Patch, Body, Param, ParseIntPipe, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -18,21 +18,37 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.RH)
-  @ApiOperation({ summary: 'Criar colaborador', description: 'Cria um novo colaborador. Acesso: Admin, RH.' })
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.RH)
+  @ApiOperation({ summary: 'Criar colaborador', description: 'Cria um novo colaborador. Acesso: Super Admin, Admin, RH.' })
   @ApiResponse({ status: 201, description: 'Colaborador criado com sucesso' })
   @ApiResponse({ status: 409, description: 'Email já cadastrado' })
   @ApiResponse({ status: 403, description: 'Sem permissão' })
-  create(@Body() createUserDto: CreateUserDto) {
+  create(@CurrentUser() caller: User, @Body() createUserDto: CreateUserDto) {
+    const callerEmpresaId = (caller as any).empresaId;
+    if (callerEmpresaId && !createUserDto.empresaId) {
+      createUserDto.empresaId = callerEmpresaId;
+    }
     return this.usersService.create(createUserDto);
+  }
+
+  @Post('import')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Importar usuários via JSON', description: 'Importa múltiplos usuários de uma vez. Acesso: Admin.' })
+  @ApiResponse({ status: 201, description: 'Resultado da importação com contagem e erros por linha' })
+  async importUsers(@CurrentUser() caller: User, @Body('users') users: any[]) {
+    if (!Array.isArray(users) || users.length === 0) {
+      throw new BadRequestException('O campo "users" deve ser um array não vazio');
+    }
+    const callerEmpresaId = (caller as any).empresaId;
+    return this.usersService.importMany(users, callerEmpresaId);
   }
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.RH)
-  @ApiOperation({ summary: 'Listar colaboradores', description: 'Lista todos os colaboradores ativos. Acesso: Admin, RH.' })
+  @ApiOperation({ summary: 'Listar colaboradores', description: 'Lista colaboradores da empresa. Super Admin vê todos.' })
   @ApiResponse({ status: 200, description: 'Lista retornada com sucesso' })
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@CurrentUser() user: User) {
+    return this.usersService.findAll(user.role, (user as any).empresaId);
   }
 
   @Get('me')

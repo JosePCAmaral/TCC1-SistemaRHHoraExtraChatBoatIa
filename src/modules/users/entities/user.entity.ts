@@ -1,9 +1,20 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { Empresa } from '../../empresas/entities/empresa.entity';
 
 export enum UserRole {
   COLABORADOR = 'colaborador',
   RH = 'rh',
   ADMIN = 'admin',
+  SUPER_ADMIN = 'super_admin',
 }
 
 export enum UserStatus {
@@ -51,6 +62,13 @@ export class User {
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   hourlyRate: number;
+
+  @Column({ nullable: true })
+  empresaId: number;
+
+  @ManyToOne(() => Empresa, { nullable: true, eager: false })
+  @JoinColumn({ name: 'empresaId' })
+  empresa: Empresa;
 
   @CreateDateColumn()
   createdAt: Date;

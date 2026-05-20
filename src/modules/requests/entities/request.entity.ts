@@ -6,10 +6,18 @@ export enum RequestType {
   PAGAMENTO = 'pagamento',
 }
 
+// Percentual da hora extra a que o requerimento se refere (50, 60 ou 100)
+export enum OvertimeTier {
+  FIFTY = 50,
+  SIXTY = 60,
+  HUNDRED = 100,
+}
+
 export enum RequestStatus {
   PENDENTE = 'pendente',
   APROVADO = 'aprovado',
   REJEITADO = 'rejeitado',
+  CANCELADO = 'cancelado',
 }
 
 @Entity('requests')
@@ -40,6 +48,9 @@ export class Request {
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   hoursAmount: number;
+
+  @Column({ type: 'int', default: 50 })
+  overtimeTier: number;
 
   @Column({ type: 'text' })
   justification: string;

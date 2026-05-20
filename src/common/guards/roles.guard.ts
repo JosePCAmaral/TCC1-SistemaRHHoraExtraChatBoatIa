@@ -16,6 +16,9 @@ export class RolesGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest();
 
+    // super_admin tem acesso irrestrito a todos os endpoints
+    if (user?.role === UserRole.SUPER_ADMIN) return true;
+
     const hasRole = requiredRoles.includes(user.role);
     if (!hasRole) {
       throw new ForbiddenException('Acesso negado: permissão insuficiente');

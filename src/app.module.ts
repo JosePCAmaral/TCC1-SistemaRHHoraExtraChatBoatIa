@@ -12,6 +12,9 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
 import { ParametersModule } from './modules/parameters/parameters.module';
 import { ParametersService } from './modules/parameters/parameters.service';
 import { SettingsModule } from './modules/settings/settings.module';
+import { EmpresasModule } from './modules/empresas/empresas.module';
+import { PeriodosModule } from './modules/periodos/periodos.module';
+import { EmpresasService } from './modules/empresas/empresas.service';
 
 @Module({
   imports: [
@@ -31,6 +34,7 @@ import { SettingsModule } from './modules/settings/settings.module';
       }),
       inject: [ConfigService],
     }),
+    EmpresasModule,
     AuthModule,
     UsersModule,
     HoursModule,
@@ -40,16 +44,20 @@ import { SettingsModule } from './modules/settings/settings.module';
     ChatbotModule,
     ParametersModule,
     SettingsModule,
+    PeriodosModule,
   ],
 })
 export class AppModule implements OnModuleInit {
   constructor(
+    private empresasService: EmpresasService,
     private usersService: UsersService,
     private parametersService: ParametersService,
   ) {}
 
   async onModuleInit() {
-    await this.usersService.seedAdmin();
+    // Ordem importa: empresa → usuários → parâmetros
+    const empresaPadrao = await this.empresasService.seedDefaultEmpresa();
+    await this.usersService.seedAdmin(empresaPadrao.id);
     await this.parametersService.seedDefaultParameters();
   }
 }

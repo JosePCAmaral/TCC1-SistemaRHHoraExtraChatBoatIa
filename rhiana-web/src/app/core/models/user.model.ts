@@ -2,7 +2,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'colaborador' | 'rh' | 'admin';
+  role: 'colaborador' | 'rh' | 'admin' | 'super_admin';
   status: string;
   phone?: string;
   cpf?: string;
@@ -11,6 +11,7 @@ export interface User {
   workStartTime?: string;
   workEndTime?: string;
   hourlyRate?: number;
+  empresaId?: number;
   createdAt?: string;
 }
 
@@ -21,5 +22,6 @@ export interface LoginResponse {
     name: string;
     email: string;
     role: string;
+    empresaId?: number | null;
   };
 }

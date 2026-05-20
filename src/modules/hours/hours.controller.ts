@@ -36,6 +36,20 @@ export class HoursController {
     return this.hoursService.getTodayRecords(req.user.id);
   }
 
+  @Get('me/summary')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Meu resumo mensal (colaborador)' })
+  async mySummary(@Req() req, @Query('year') year: number, @Query('month') month: number) {
+    return this.hoursService.getMonthlySummary(req.user.id, Number(year), Number(month));
+  }
+
+  @Get('me/balance')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Meu saldo de horas extras (colaborador)' })
+  async myBalance(@Req() req) {
+    return this.hoursService.getUserMonthlyBalance(req.user.id);
+  }
+
   @Get('all/today')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.RH)

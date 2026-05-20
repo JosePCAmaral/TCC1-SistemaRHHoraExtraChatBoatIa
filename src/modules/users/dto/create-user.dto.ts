@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsEnum, IsInt, IsOptional, IsString, MinLength, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole } from '../entities/user.entity';
 
@@ -55,4 +55,9 @@ export class CreateUserDto {
   @ApiPropertyOptional({ example: 25.50, description: 'Valor da hora trabalhada em reais' })
   @IsOptional()
   hourlyRate?: number;
+
+  @ApiPropertyOptional({ example: 1, description: 'ID da empresa à qual o colaborador pertence' })
+  @IsInt()
+  @IsOptional()
+  empresaId?: number;
 }

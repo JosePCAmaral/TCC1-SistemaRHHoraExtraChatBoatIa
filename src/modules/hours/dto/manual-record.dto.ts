@@ -34,4 +34,7 @@ export class ManualRecordDto {
   @IsString()
   @IsOptional()
   observation?: string;
+
+  // Uso interno: bypass da validação de período (só via PeriodosService.amend)
+  isAmendment?: boolean;
 }

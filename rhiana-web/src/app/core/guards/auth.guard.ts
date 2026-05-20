@@ -14,6 +14,18 @@ export const authGuard = () => {
   return false;
 };
 
+export const superAdminGuard = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isSuperAdmin()) {
+    return true;
+  }
+
+  router.navigate(['/dashboard']);
+  return false;
+};
+
 export const adminGuard = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
@@ -36,4 +48,17 @@ export const rhGuard = () => {
 
   router.navigate(['/dashboard']);
   return false;
+};
+
+// Bloqueia super_admin de rotas específicas de empresa (redireciona para /empresas)
+export const notSuperAdminGuard = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isSuperAdmin()) {
+    router.navigate(['/empresas']);
+    return false;
+  }
+
+  return true;
 };

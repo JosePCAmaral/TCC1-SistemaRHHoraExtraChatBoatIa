@@ -1,0 +1,277 @@
+<div class="space-y-6">
+
+  <div>
+    <h1 class="text-2xl font-bold text-slate-800">Meu Relatório</h1>
+    <p class="text-slate-500 text-sm mt-0.5">Visualize seus registros de ponto, horas extras e solicitações</p>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+    <h3 class="font-semibold text-slate-700 mb-4">Período</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Data início</label>
+        <input type="date" [(ngModel)]="filters.startDate"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Data fim</label>
+        <input type="date" [(ngModel)]="filters.endDate"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+    </div>
+    <div class="mt-4 flex items-center gap-3">
+      <button (click)="search()" [disabled]="loading()"
+        class="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        {{ loading() ? 'Buscando...' : 'Buscar' }}
+      </button>
+
+      <ng-container *ngIf="report()">
+        <button (click)="exportPDF()" [disabled]="exporting()"
+          class="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+          PDF
+        </button>
+        <button (click)="exportExcel()" [disabled]="exporting()"
+          class="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Excel
+        </button>
+      </ng-container>
+    </div>
+    <div *ngIf="error()" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+      {{ error() }}
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading()" class="text-center py-12 text-slate-400">
+    <svg class="animate-spin w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+    </svg>
+    <p class="text-sm">Gerando relatório...</p>
+  </div>
+
+  <div *ngIf="report() && !loading()" class="space-y-5">
+
+    <!-- Info do colaborador -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0">
+          {{ report().user.name.charAt(0).toUpperCase() }}
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-slate-800">{{ report().user.name }}</h2>
+          <p class="text-sm text-slate-500">
+            {{ report().user.position ?? 'Sem cargo' }} · {{ report().user.department ?? 'Sem departamento' }}
+            <span *ngIf="report().user.workStartTime"> · Jornada: {{ report().user.workStartTime }} às {{ report().user.workEndTime }}</span>
+          </p>
+          <p class="text-sm text-slate-500">
+            Período: {{ formatDate(report().period.startDate) }} até {{ formatDate(report().period.endDate) }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards resumo -->
+    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Dias Trabalhados</p>
+        <p class="text-2xl font-bold text-slate-800 mt-1">{{ report().summary.workedDays }}</p>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Horas Extras</p>
+        <p class="text-2xl font-bold text-blue-600 mt-1">{{ formatHours(report().summary.totalExtraHours) }}</p>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Horas Noturnas</p>
+        <p class="text-2xl font-bold text-indigo-600 mt-1">{{ formatHours(report().summary.totalNightHours) }}</p>
+      </div>
+    </div>
+
+    <!-- Resumo financeiro -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+      <h3 class="font-semibold text-slate-800 mb-4">Resumo Financeiro</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+          <div>
+            <p class="text-xs text-slate-500">Extras 50%</p>
+            <p class="text-sm font-medium text-slate-700">{{ formatHours(report().summary.totalExtraHours50) }}</p>
+          </div>
+          <p class="text-sm font-bold text-green-600">{{ formatCurrency(report().summary.financialSummary.extra50Value) }}</p>
+        </div>
+        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+          <div>
+            <p class="text-xs text-slate-500">Extras 60%</p>
+            <p class="text-sm font-medium text-slate-700">{{ formatHours(report().summary.totalExtraHours60 ?? 0) }}</p>
+          </div>
+          <p class="text-sm font-bold text-green-600">{{ formatCurrency(report().summary.financialSummary.extra60Value ?? 0) }}</p>
+        </div>
+        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+          <div>
+            <p class="text-xs text-slate-500">Extras 100%</p>
+            <p class="text-sm font-medium text-slate-700">{{ formatHours(report().summary.totalExtraHours100) }}</p>
+          </div>
+          <p class="text-sm font-bold text-green-600">{{ formatCurrency(report().summary.financialSummary.extra100Value) }}</p>
+        </div>
+        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+          <div>
+            <p class="text-xs text-slate-500">Adicional noturno</p>
+            <p class="text-sm font-medium text-slate-700">{{ formatHours(report().summary.totalNightHours) }}</p>
+          </div>
+          <p class="text-sm font-bold text-indigo-600">{{ formatCurrency(report().summary.financialSummary.nightValue) }}</p>
+        </div>
+      </div>
+      <div class="bg-blue-50 rounded-xl p-4 border border-blue-100 flex items-center justify-between">
+        <div>
+          <p class="text-sm font-semibold text-blue-700 uppercase tracking-wide">Total a Receber</p>
+          <p class="text-xs text-blue-500 mt-0.5">Saldo após compensações/pagamentos aprovados</p>
+        </div>
+        <p class="text-2xl font-bold text-blue-700">
+          {{ formatCurrency((report().summary.financialSummary.extra50Value ?? 0) + (report().summary.financialSummary.extra60Value ?? 0) + (report().summary.financialSummary.extra100Value ?? 0) + (report().summary.financialSummary.nightValue ?? 0)) }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Registros diários -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-semibold text-slate-800">Registros Diários</h3>
+        <span class="text-xs text-slate-400">{{ report().summary.workedDays }} dias</span>
+      </div>
+      <div class="divide-y divide-slate-50">
+        <div *ngFor="let day of report().dailySummary" class="px-5 py-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <p class="text-sm font-semibold text-slate-800">{{ formatDate(day.date) }}</p>
+              <span class="px-2 py-0.5 text-xs rounded-full font-medium" [ngClass]="getDayTypeBadge(day.dayType)">
+                {{ getDayTypeLabel(day.dayType) }}
+              </span>
+            </div>
+            <div class="flex items-center gap-3 text-xs text-slate-500">
+              <span *ngIf="day.totalExtraHours50 > 0" class="text-orange-600 font-medium">+{{ formatHours(day.totalExtraHours50) }} (50%)</span>
+              <span *ngIf="day.totalExtraHours60 > 0" class="text-amber-600 font-medium">+{{ formatHours(day.totalExtraHours60) }} (60%)</span>
+              <span *ngIf="day.totalExtraHours100 > 0" class="text-red-600 font-medium">+{{ formatHours(day.totalExtraHours100) }} (100%)</span>
+              <span *ngIf="day.totalNightHours > 0" class="text-indigo-600 font-medium">🌙 {{ formatHours(day.totalNightHours) }}</span>
+              <span class="text-slate-600 font-medium">{{ formatHours(day.totalRegularHours) }} normais</span>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <div *ngFor="let record of day.records"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              [class.bg-green-50]="record.type === 'entrada'"
+              [class.text-green-700]="record.type === 'entrada'"
+              [class.bg-red-50]="record.type === 'saida'"
+              [class.text-red-700]="record.type === 'saida'">
+              <span>{{ record.type === 'entrada' ? '🟢' : '🔴' }}</span>
+              <span class="capitalize">{{ record.type }}</span>
+              <span class="font-bold">{{ formatTime(record.time) }}</span>
+              <span *ngIf="record.isManual" class="text-slate-400">(manual)</span>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="report().dailySummary.length === 0" class="px-5 py-8 text-center text-slate-400 text-sm">
+          Nenhum registro no período selecionado
+        </div>
+      </div>
+    </div>
+
+    <!-- Solicitações -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100">
+      <div class="px-5 py-4 border-b border-slate-100">
+        <h3 class="font-semibold text-slate-800">Pagamentos e Compensações</h3>
+      </div>
+
+      <div class="p-5 space-y-5">
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+            <p class="text-xs font-medium text-blue-600 uppercase tracking-wide">Horas Compensadas</p>
+            <p class="text-2xl font-bold text-blue-700 mt-1">
+              {{ formatHours(report().requests.totals?.totalHorasCompensadas ?? 0) }}
+            </p>
+            <p class="text-xs text-blue-500 mt-0.5">compensações aprovadas</p>
+          </div>
+          <div class="bg-green-50 rounded-xl p-4 border border-green-100">
+            <p class="text-xs font-medium text-green-600 uppercase tracking-wide">Horas Pagas</p>
+            <p class="text-2xl font-bold text-green-700 mt-1">
+              {{ formatHours(report().requests.totals?.totalHorasPagas ?? 0) }}
+            </p>
+            <p class="text-xs text-green-500 mt-0.5">pagamentos aprovados</p>
+          </div>
+          <div class="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+            <p class="text-xs font-medium text-emerald-600 uppercase tracking-wide">Valor Total Pago</p>
+            <p class="text-2xl font-bold text-emerald-700 mt-1">
+              {{ formatCurrency(report().requests.totals?.totalValorPago ?? 0) }}
+            </p>
+            <p class="text-xs text-emerald-500 mt-0.5">em pagamentos aprovados</p>
+          </div>
+        </div>
+
+        <div *ngIf="!report().requestsList?.length" class="text-center py-6 text-slate-400">
+          <p class="text-sm">Nenhuma solicitação encontrada</p>
+        </div>
+
+        <div *ngIf="report().requestsList?.length > 0" class="space-y-2">
+          <div class="flex gap-2 mb-3 flex-wrap">
+            <span class="px-3 py-1 bg-slate-100 text-slate-600 text-xs rounded-full font-medium">Total: {{ report().requests.total }}</span>
+            <span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full font-medium">⏳ Pendentes: {{ report().requests.pending }}</span>
+            <span class="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">✅ Aprovadas: {{ report().requests.approved }}</span>
+            <span class="px-3 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">❌ Rejeitadas: {{ report().requests.rejected }}</span>
+          </div>
+
+          <div *ngFor="let req of report().requestsList"
+            class="flex items-start justify-between p-4 rounded-xl border transition-colors"
+            [class.border-green-200]="req.status === 'aprovado'"
+            [class.bg-green-50]="req.status === 'aprovado'"
+            [class.border-red-200]="req.status === 'rejeitado'"
+            [class.bg-red-50]="req.status === 'rejeitado'"
+            [class.border-slate-100]="req.status === 'pendente'"
+            [class.bg-white]="req.status === 'pendente'">
+
+            <div class="flex items-start gap-3">
+              <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                [class.bg-blue-100]="req.type === 'pagamento'"
+                [class.bg-purple-100]="req.type === 'compensacao'">
+                <span class="text-base">{{ req.type === 'pagamento' ? '💰' : '🔄' }}</span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <p class="text-sm font-semibold text-slate-800">
+                    {{ req.type === 'pagamento' ? 'Pagamento' : 'Compensação' }}
+                  </p>
+                  <span class="px-2 py-0.5 text-xs rounded-full font-medium" [ngClass]="getRequestStatusClass(req.status)">
+                    {{ getRequestStatusLabel(req.status) }}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">
+                  Ref: {{ formatDate(req.referenceDate) }} · {{ req.hoursAmount }}h · Criado em {{ formatDate(req.createdAt) }}
+                </p>
+                <p *ngIf="req.justification" class="text-xs text-slate-500 italic mt-0.5">"{{ req.justification }}"</p>
+                <p *ngIf="req.reviewerComment" class="text-xs text-slate-400 mt-0.5">Resposta: "{{ req.reviewerComment }}"</p>
+              </div>
+            </div>
+
+            <div class="text-right shrink-0 ml-3">
+              <p *ngIf="req.estimatedValue && req.type === 'pagamento'" class="text-sm font-bold text-green-600">
+                {{ formatCurrency(req.estimatedValue) }}
+              </p>
+              <p class="text-xs text-slate-400 mt-0.5">{{ req.hoursAmount }}h</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</div>

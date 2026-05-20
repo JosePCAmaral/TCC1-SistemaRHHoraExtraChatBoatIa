@@ -57,13 +57,13 @@ export class HourRecord {
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, default: 0 })
   extraHours50: number;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   extraHours60: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, default: 0 })
   extraHours100: number;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   nightHours: number;
 
   @Column({ default: false })

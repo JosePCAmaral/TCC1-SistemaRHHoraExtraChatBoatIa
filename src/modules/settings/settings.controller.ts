@@ -8,6 +8,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole, User, UserStatus } from '../users/entities/user.entity';
 import { HourRecord, RecordType } from '../hours/entities/hour-record.entity';
 import { Request, RequestStatus } from '../requests/entities/request.entity';
+import { localDateString } from '../../common/utils/date.utils';
 import { NetworkIp } from '../network/entities/network-ip.entity';
 import { AccessLog, AccessStatus } from '../network/entities/access-log.entity';
 import { ChatMessage } from '../chatbot/entities/chat-message.entity';
@@ -40,7 +41,7 @@ export class SettingsController {
   })
   @ApiResponse({ status: 200, description: 'Overview retornado com sucesso' })
   async getAdminOverview() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateString();
     const firstDayOfMonth = today.substring(0, 7) + '-01';
 
     const [

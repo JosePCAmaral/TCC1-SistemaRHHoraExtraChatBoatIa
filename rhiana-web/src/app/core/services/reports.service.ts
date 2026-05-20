@@ -15,4 +15,12 @@ export class ReportsService {
   getIndividualReport(userId: number, startDate: string, endDate: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/individual/${userId}?startDate=${startDate}&endDate=${endDate}`);
   }
+
+  getMyReport(startDate: string, endDate: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/individual/me?startDate=${startDate}&endDate=${endDate}`);
+  }
+
+  getCollectiveReport(startDate: string, endDate: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/collective?startDate=${startDate}&endDate=${endDate}`);
+  }
 }

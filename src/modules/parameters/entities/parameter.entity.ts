@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { Empresa } from '../../empresas/entities/empresa.entity';
 
 export enum ParameterType {
   PERCENTUAL = 'percentual',
@@ -12,7 +21,8 @@ export class Parameter {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true, length: 100 })
+  // Sem unique: a mesma chave pode existir global (empresaId NULL) e por empresa
+  @Column({ length: 100 })
   key: string;
 
   @Column({ type: 'text' })
@@ -26,6 +36,14 @@ export class Parameter {
 
   @Column({ default: true })
   active: boolean;
+
+  // NULL = parâmetro global (padrão CLT); número = override específico da empresa
+  @Column({ nullable: true })
+  empresaId: number;
+
+  @ManyToOne(() => Empresa, { nullable: true, eager: false })
+  @JoinColumn({ name: 'empresaId' })
+  empresa: Empresa;
 
   @CreateDateColumn()
   createdAt: Date;

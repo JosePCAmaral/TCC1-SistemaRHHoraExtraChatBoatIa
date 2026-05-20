@@ -44,6 +44,12 @@ export class HoursService {
     return this.http.get<HourRecord[]>(`${this.apiUrl}/me/today`);
   }
 
+  getMyMonthlySummary(year: number, month: number): Observable<MonthlySummary> {
+    return this.http.get<MonthlySummary>(
+      `${this.apiUrl}/me/summary?year=${year}&month=${month}`
+    );
+  }
+
   getMonthlySummary(userId: number, year: number, month: number): Observable<MonthlySummary> {
     return this.http.get<MonthlySummary>(
       `${this.apiUrl}/user/${userId}/summary?year=${year}&month=${month}`

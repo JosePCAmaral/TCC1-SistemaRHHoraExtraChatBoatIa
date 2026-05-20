@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
+import { localDateString } from '../../common/utils/date.utils';
 import { HourRecord, RecordType } from '../hours/entities/hour-record.entity';
 import { User, UserStatus } from '../users/entities/user.entity';
-import { Request, RequestStatus } from '../requests/entities/request.entity';
+import { Request, RequestStatus, RequestType } from '../requests/entities/request.entity';
+import { ParametersService } from '../parameters/parameters.service';
+
+const DEFAULT_ADICIONAL_NOTURNO_PERCENT = 20;
 
 @Injectable()
 export class ReportsService {
@@ -14,7 +18,17 @@ export class ReportsService {
     private userRepository: Repository<User>,
     @InjectRepository(Request)
     private requestRepository: Repository<Request>,
+    private parametersService: ParametersService,
   ) {}
+
+  private async getNightMultiplier(): Promise<number> {
+    const raw = await this.parametersService.getValue(
+      'ADICIONAL_NOTURNO',
+      undefined,
+      String(DEFAULT_ADICIONAL_NOTURNO_PERCENT),
+    );
+    return (Number(raw) || DEFAULT_ADICIONAL_NOTURNO_PERCENT) / 100;
+  }
 
   // Relatório individual de um colaborador
   async getIndividualReport(userId: number, startDate: string, endDate: string) {
@@ -49,12 +63,16 @@ export class ReportsService {
 
     // Totais de solicitações
     const approvedRequests = requests.filter(r => r.status === RequestStatus.APROVADO);
-    const compensacaoAprovadas = approvedRequests.filter(r => r.type === 'compensacao');
-    const pagamentoAprovados = approvedRequests.filter(r => r.type === 'pagamento');
+    const compensacaoAprovadas = approvedRequests.filter(r => r.type === RequestType.COMPENSACAO);
+    const pagamentoAprovados = approvedRequests.filter(r => r.type === RequestType.PAGAMENTO);
 
     const totalHorasCompensadas = compensacaoAprovadas.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
     const totalHorasPagas = pagamentoAprovados.reduce((sum, r) => sum + Number(r.hoursAmount), 0);
-    const totalValorPago = pagamentoAprovados.reduce((sum, r) => sum + (Number(r.hoursAmount) * hourlyRate * 1.5), 0);
+    const totalValorPago = pagamentoAprovados.reduce((sum, r) => {
+      const tier = Number((r as any).overtimeTier ?? 50);
+      const multiplier = 1 + tier / 100;
+      return sum + Number(r.hoursAmount) * hourlyRate * multiplier;
+    }, 0);
 
     // Calcular horas deductíveis (abater compensações e pagamentos das extras)
     // Deduzir prioritariamente de 100%, depois 60%, depois 50%
@@ -80,12 +98,13 @@ export class ReportsService {
       deductible50 -= toRemove50;
     }
 
+    const nightMultiplier = await this.getNightMultiplier();
     const totalExtraDeductible = deductible50 + deductible60 + deductible100;
     const regularValue = totalRegular * hourlyRate;
     const extra50Value = deductible50 * hourlyRate * 1.5;
     const extra60Value = deductible60 * hourlyRate * 1.6;
     const extra100Value = deductible100 * hourlyRate * 2.0;
-    const nightValue = totalNight * hourlyRate * 0.2;
+    const nightValue = totalNight * hourlyRate * nightMultiplier;
     const totalValue = regularValue + extra50Value + extra60Value + extra100Value + nightValue;
 
     return {
@@ -127,6 +146,7 @@ export class ReportsService {
         pending: requests.filter(r => r.status === RequestStatus.PENDENTE).length,
         approved: approvedRequests.length,
         rejected: requests.filter(r => r.status === RequestStatus.REJEITADO).length,
+        cancelled: requests.filter(r => r.status === RequestStatus.CANCELADO).length,
         totals: {
           totalHorasCompensadas: +totalHorasCompensadas.toFixed(2),
           totalHorasPagas: +totalHorasPagas.toFixed(2),
@@ -145,7 +165,7 @@ export class ReportsService {
         createdAt: r.createdAt,
         reviewer: r.reviewer ? { name: r.reviewer.name } : null,
         estimatedValue: r.status === RequestStatus.APROVADO
-          ? +(Number(r.hoursAmount) * hourlyRate * 1.5).toFixed(2)
+          ? +((Number(r.hoursAmount) * hourlyRate * (1 + Number((r as any).overtimeTier ?? 50) / 100))).toFixed(2)
           : null,
       })),
       dailySummary,
@@ -167,8 +187,11 @@ export class ReportsService {
 
         const saidas = records.filter(r => r.type === RecordType.SAIDA);
         const totalExtra50 = saidas.reduce((sum, r) => sum + Number(r.extraHours50), 0);
+        const totalExtra60 = saidas.reduce((sum, r) => sum + Number((r as any).extraHours60 ?? 0), 0);
         const totalExtra100 = saidas.reduce((sum, r) => sum + Number(r.extraHours100), 0);
+        const totalNight = saidas.reduce((sum, r) => sum + Number(r.nightHours), 0);
         const totalRegular = saidas.reduce((sum, r) => sum + Number(r.regularHours), 0);
+        const rate = Number(user.hourlyRate ?? 0);
 
         return {
           userId: user.id,
@@ -177,13 +200,16 @@ export class ReportsService {
           position: user.position,
           totalRegularHours: +totalRegular.toFixed(2),
           totalExtraHours50: +totalExtra50.toFixed(2),
+          totalExtraHours60: +totalExtra60.toFixed(2),
           totalExtraHours100: +totalExtra100.toFixed(2),
-          totalExtraHours: +(totalExtra50 + totalExtra100).toFixed(2),
+          totalNightHours: +totalNight.toFixed(2),
+          totalExtraHours: +(totalExtra50 + totalExtra60 + totalExtra100).toFixed(2),
           workedDays: [...new Set(records.map(r => r.date))].length,
-          totalValueExtra: user.hourlyRate
+          totalValueExtra: rate
             ? +(
-                totalExtra50 * Number(user.hourlyRate) * 1.5 +
-                totalExtra100 * Number(user.hourlyRate) * 2.0
+                totalExtra50 * rate * 1.5 +
+                totalExtra60 * rate * 1.6 +
+                totalExtra100 * rate * 2.0
               ).toFixed(2)
             : null,
         };
@@ -191,12 +217,16 @@ export class ReportsService {
     );
 
     const totalExtraGeral = results.reduce((sum, r) => sum + r.totalExtraHours, 0);
+    const totalExtra60Geral = results.reduce((sum, r) => sum + r.totalExtraHours60, 0);
+    const totalNightGeral = results.reduce((sum, r) => sum + r.totalNightHours, 0);
     const totalValueGeral = results.reduce((sum, r) => sum + (r.totalValueExtra ?? 0), 0);
 
     return {
       period: { startDate, endDate },
       totalCollaborators: users.length,
       totalExtraHours: +totalExtraGeral.toFixed(2),
+      totalExtraHours60: +totalExtra60Geral.toFixed(2),
+      totalNightHours: +totalNightGeral.toFixed(2),
       totalExtraValue: +totalValueGeral.toFixed(2),
       collaborators: results,
     };
@@ -208,7 +238,7 @@ export class ReportsService {
       where: { status: UserStatus.ATIVO },
     });
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateString();
     const firstDayOfMonth = today.substring(0, 7) + '-01';
 
     const clockedInToday = await this.hourRecordRepository
@@ -227,7 +257,11 @@ export class ReportsService {
 
     const monthSaidas = monthRecords.filter(r => r.type === RecordType.SAIDA);
     const totalExtraMonth = monthSaidas.reduce(
-      (sum, r) => sum + Number(r.extraHours50) + Number(r.extraHours100),
+      (sum, r) =>
+        sum +
+        Number(r.extraHours50) +
+        Number((r as any).extraHours60 ?? 0) +
+        Number(r.extraHours100),
       0,
     );
 
@@ -272,7 +306,11 @@ export class ReportsService {
         });
         const saidas = records.filter(r => r.type === RecordType.SAIDA);
         const totalExtra = saidas.reduce(
-          (sum, r) => sum + Number(r.extraHours50) + Number(r.extraHours100),
+          (sum, r) =>
+            sum +
+            Number(r.extraHours50) +
+            Number((r as any).extraHours60 ?? 0) +
+            Number(r.extraHours100),
           0,
         );
         return {

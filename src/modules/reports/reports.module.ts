@@ -5,9 +5,10 @@ import { ReportsController } from './reports.controller';
 import { HourRecord } from '../hours/entities/hour-record.entity';
 import { User } from '../users/entities/user.entity';
 import { Request } from '../requests/entities/request.entity';
+import { ParametersModule } from '../parameters/parameters.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([HourRecord, User, Request])],
+  imports: [TypeOrmModule.forFeature([HourRecord, User, Request]), ParametersModule],
   providers: [ReportsService],
   controllers: [ReportsController],
   exports: [ReportsService],

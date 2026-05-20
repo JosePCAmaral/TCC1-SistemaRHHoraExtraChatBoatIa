@@ -1,0 +1,184 @@
+<div class="space-y-6">
+
+  <div>
+    <h1 class="text-2xl font-bold text-slate-800">Relatório da Empresa</h1>
+    <p class="text-slate-500 text-sm mt-0.5">Visão consolidada das horas extras de todos os colaboradores</p>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+    <h3 class="font-semibold text-slate-700 mb-4">Período</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Data início</label>
+        <input type="date" [(ngModel)]="filters.startDate"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1.5">Data fim</label>
+        <input type="date" [(ngModel)]="filters.endDate"
+          class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+      </div>
+    </div>
+    <div class="mt-4 flex items-center gap-3">
+      <button (click)="search()" [disabled]="loading()"
+        class="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        {{ loading() ? 'Buscando...' : 'Buscar' }}
+      </button>
+
+      <ng-container *ngIf="report()">
+        <button (click)="exportPDF()" [disabled]="exporting()"
+          class="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+          PDF
+        </button>
+        <button (click)="exportExcel()" [disabled]="exporting()"
+          class="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-60">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Excel
+        </button>
+      </ng-container>
+    </div>
+    <div *ngIf="error()" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+      {{ error() }}
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading()" class="text-center py-12 text-slate-400">
+    <svg class="animate-spin w-8 h-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+    </svg>
+    <p class="text-sm">Gerando relatório...</p>
+  </div>
+
+  <div *ngIf="report() && !loading()" class="space-y-5">
+
+    <!-- Cards de resumo geral -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Colaboradores</p>
+        <p class="text-2xl font-bold text-slate-800 mt-1">{{ report().totalCollaborators }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">ativos</p>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Extra</p>
+        <p class="text-2xl font-bold text-blue-600 mt-1">{{ formatHours(report().totalExtraHours) }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">horas extras acumuladas</p>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Horas Noturnas</p>
+        <p class="text-2xl font-bold text-indigo-600 mt-1">{{ formatHours(report().totalNightHours) }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">adicional noturno</p>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">Valor Total</p>
+        <p class="text-2xl font-bold text-emerald-600 mt-1">{{ formatCurrency(report().totalExtraValue) }}</p>
+        <p class="text-xs text-slate-400 mt-0.5">em horas extras</p>
+      </div>
+    </div>
+
+    <!-- Busca / filtro por nome -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-slate-800">Colaboradores</h3>
+        <span class="text-xs text-slate-400">{{ filteredCollaborators.length }} de {{ report().totalCollaborators }}</span>
+      </div>
+      <input
+        type="text"
+        [(ngModel)]="searchName"
+        placeholder="Buscar por nome ou departamento..."
+        class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"/>
+
+      <!-- Tabela de colaboradores -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-100">
+              <th class="text-left py-2 pr-4 text-xs font-medium text-slate-500 uppercase tracking-wide">Colaborador</th>
+              <th class="text-left py-2 pr-4 text-xs font-medium text-slate-500 uppercase tracking-wide hidden sm:table-cell">Departamento</th>
+              <th class="text-center py-2 px-2 text-xs font-medium text-slate-500 uppercase tracking-wide">Dias</th>
+              <th class="text-center py-2 px-2 text-xs font-medium text-orange-500 uppercase tracking-wide">50%</th>
+              <th class="text-center py-2 px-2 text-xs font-medium text-amber-500 uppercase tracking-wide">60%</th>
+              <th class="text-center py-2 px-2 text-xs font-medium text-red-500 uppercase tracking-wide">100%</th>
+              <th class="text-center py-2 px-2 text-xs font-medium text-indigo-500 uppercase tracking-wide hidden md:table-cell">Noturnas</th>
+              <th class="text-right py-2 px-2 text-xs font-medium text-slate-500 uppercase tracking-wide">Total Extra</th>
+              <th class="text-right py-2 pl-2 text-xs font-medium text-emerald-600 uppercase tracking-wide hidden lg:table-cell">Valor</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            <tr *ngFor="let c of filteredCollaborators" class="hover:bg-slate-50 transition-colors">
+              <td class="py-3 pr-4">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0">
+                    {{ c.name.charAt(0).toUpperCase() }}
+                  </div>
+                  <div>
+                    <p class="font-medium text-slate-800">{{ c.name }}</p>
+                    <p class="text-xs text-slate-400">{{ c.position ?? 'Sem cargo' }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 pr-4 text-slate-500 hidden sm:table-cell">{{ c.department ?? '-' }}</td>
+              <td class="py-3 px-2 text-center text-slate-600 font-medium">{{ c.workedDays }}</td>
+              <td class="py-3 px-2 text-center">
+                <span *ngIf="c.totalExtraHours50 > 0" class="text-orange-600 font-medium">{{ formatHours(c.totalExtraHours50) }}</span>
+                <span *ngIf="!c.totalExtraHours50" class="text-slate-300">—</span>
+              </td>
+              <td class="py-3 px-2 text-center">
+                <span *ngIf="c.totalExtraHours60 > 0" class="text-amber-600 font-medium">{{ formatHours(c.totalExtraHours60) }}</span>
+                <span *ngIf="!c.totalExtraHours60" class="text-slate-300">—</span>
+              </td>
+              <td class="py-3 px-2 text-center">
+                <span *ngIf="c.totalExtraHours100 > 0" class="text-red-600 font-medium">{{ formatHours(c.totalExtraHours100) }}</span>
+                <span *ngIf="!c.totalExtraHours100" class="text-slate-300">—</span>
+              </td>
+              <td class="py-3 px-2 text-center hidden md:table-cell">
+                <span *ngIf="c.totalNightHours > 0" class="text-indigo-600 font-medium">{{ formatHours(c.totalNightHours) }}</span>
+                <span *ngIf="!c.totalNightHours" class="text-slate-300">—</span>
+              </td>
+              <td class="py-3 px-2 text-right">
+                <div>
+                  <span class="font-bold text-blue-600">{{ formatHours(c.totalExtraHours) }}</span>
+                  <div class="mt-1 h-1.5 bg-slate-100 rounded-full w-full max-w-[80px] ml-auto">
+                    <div class="h-1.5 bg-blue-500 rounded-full" [style.width]="getExtraBarWidth(c.totalExtraHours, maxExtraHours)"></div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 pl-2 text-right hidden lg:table-cell">
+                <span *ngIf="c.totalValueExtra != null" class="font-bold text-emerald-600">{{ formatCurrency(c.totalValueExtra) }}</span>
+                <span *ngIf="c.totalValueExtra == null" class="text-slate-300 text-xs">Sem valor/h</span>
+              </td>
+            </tr>
+          </tbody>
+          <tfoot *ngIf="filteredCollaborators.length > 0">
+            <tr class="border-t-2 border-slate-200 bg-slate-50">
+              <td class="py-3 pr-4 font-bold text-slate-800" colspan="2">TOTAIS</td>
+              <td class="py-3 px-2 text-center font-bold text-slate-700">{{ filteredTotals.workedDays }}</td>
+              <td class="py-3 px-2 text-center font-bold text-orange-600">{{ formatHours(filteredTotals.extra50) }}</td>
+              <td class="py-3 px-2 text-center font-bold text-amber-600">{{ formatHours(filteredTotals.extra60) }}</td>
+              <td class="py-3 px-2 text-center font-bold text-red-600">{{ formatHours(filteredTotals.extra100) }}</td>
+              <td class="py-3 px-2 text-center font-bold text-indigo-600 hidden md:table-cell">{{ formatHours(filteredTotals.night) }}</td>
+              <td class="py-3 px-2 text-right font-bold text-blue-700">{{ formatHours(filteredTotals.extra) }}</td>
+              <td class="py-3 pl-2 text-right font-bold text-emerald-700 hidden lg:table-cell">{{ formatCurrency(filteredTotals.value) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div *ngIf="filteredCollaborators.length === 0" class="text-center py-8 text-slate-400 text-sm">
+        Nenhum colaborador encontrado
+      </div>
+    </div>
+
+  </div>
+
+</div>

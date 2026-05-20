@@ -19,7 +19,7 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({
       where: { email },
-      select: ['id', 'name', 'email', 'password', 'role', 'status'],
+      select: ['id', 'name', 'email', 'password', 'role', 'status', 'empresaId'],
     });
 
     if (!user) {
@@ -40,6 +40,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       name: user.name,
+      empresaId: user.empresaId ?? null,
     };
 
     return {
@@ -49,24 +50,38 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
+        empresaId: user.empresaId ?? null,
       },
     };
   }
 
-  async refreshToken(payload: { sub: number; email: string; role: string; name: string }) {
+  async refreshToken(payload: { sub: number; email: string; role: string; name: string; empresaId?: number }) {
     const user = await this.userRepository.findOne({
       where: { id: payload.sub },
-      select: ['id', 'name', 'email', 'role', 'status'],
+      select: ['id', 'name', 'email', 'role', 'status', 'empresaId'],
     });
 
     if (!user || user.status === 'inativo') {
       throw new UnauthorizedException('Sessão inválida.');
     }
 
-    const newPayload = { sub: user.id, email: user.email, role: user.role, name: user.name };
+    const newPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      empresaId: user.empresaId ?? null,
+    };
+
     return {
       access_token: this.jwtService.sign(newPayload),
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        empresaId: user.empresaId ?? null,
+      },
     };
   }
 

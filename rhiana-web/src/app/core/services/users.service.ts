@@ -35,4 +35,33 @@ export class UsersService {
       newPassword,
     });
   }
+
+  importUsers(users: any[]): Observable<{ imported: number; errors: Array<{ row: number; email: string; reason: string }> }> {
+    return this.http.post<any>(`${this.apiUrl}/import`, { users });
+  }
+
+  downloadTemplate(): void {
+    const template = [
+      {
+        name: 'João Silva',
+        email: 'joao@empresa.com',
+        password: 'Senha@123',
+        role: 'colaborador',
+        cpf: '000.000.000-00',
+        department: 'Tecnologia',
+        position: 'Desenvolvedor',
+        phone: '(43) 99999-9999',
+        workStartTime: '08:00',
+        workEndTime: '17:00',
+        hourlyRate: 25.00,
+      },
+    ];
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'template-importacao-usuarios.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }

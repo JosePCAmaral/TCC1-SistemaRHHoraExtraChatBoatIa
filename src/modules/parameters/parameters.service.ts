@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Parameter, ParameterType } from './entities/parameter.entity';
 import { CreateParameterDto } from './dto/create-parameter.dto';
 
@@ -11,23 +11,53 @@ export class ParametersService {
     private parameterRepository: Repository<Parameter>,
   ) {}
 
-  async findAll(): Promise<Parameter[]> {
-    return this.parameterRepository.find({ order: { type: 'ASC', key: 'ASC' } });
+  /**
+   * Retorna todos os parâmetros globais.
+   * Se empresaId informado, retorna os globais mesclados com os overrides da empresa
+   * (override da empresa prevalece sobre o global para a mesma chave).
+   */
+  async findAll(empresaId?: number): Promise<Parameter[]> {
+    const globals = await this.parameterRepository.find({
+      where: { empresaId: IsNull() },
+      order: { type: 'ASC', key: 'ASC' },
+    });
+
+    if (!empresaId) return globals;
+
+    const overrides = await this.parameterRepository.find({
+      where: { empresaId },
+      order: { type: 'ASC', key: 'ASC' },
+    });
+
+    // Mescla: substitui global pelo override da empresa quando a chave coincide
+    const overrideMap = new Map(overrides.map((p) => [p.key, p]));
+    return globals.map((g) => overrideMap.get(g.key) ?? g).concat(
+      overrides.filter((o) => !globals.some((g) => g.key === o.key)),
+    );
   }
 
-  async findByType(type: ParameterType): Promise<Parameter[]> {
-    return this.parameterRepository.find({ where: { type, active: true } });
+  async findByType(type: ParameterType, empresaId?: number): Promise<Parameter[]> {
+    const all = await this.findAll(empresaId);
+    return all.filter((p) => p.type === type && p.active);
   }
 
-  async findByKey(key: string): Promise<Parameter> {
-    const param = await this.parameterRepository.findOne({ where: { key } });
-    if (!param) throw new NotFoundException(`Parâmetro '${key}' não encontrado`);
-    return param;
+  /**
+   * Resolve um parâmetro pela chave: prefere override da empresa, depois global.
+   */
+  async findByKey(key: string, empresaId?: number): Promise<Parameter> {
+    if (empresaId) {
+      const override = await this.parameterRepository.findOne({ where: { key, empresaId } });
+      if (override) return override;
+    }
+
+    const global = await this.parameterRepository.findOne({ where: { key, empresaId: IsNull() } });
+    if (!global) throw new NotFoundException(`Parâmetro '${key}' não encontrado`);
+    return global;
   }
 
-  async getValue(key: string, defaultValue?: string): Promise<string> {
+  async getValue(key: string, empresaId?: number, defaultValue?: string): Promise<string> {
     try {
-      const param = await this.findByKey(key);
+      const param = await this.findByKey(key, empresaId);
       return param.value;
     } catch {
       return defaultValue ?? null;
@@ -35,14 +65,23 @@ export class ParametersService {
   }
 
   async create(dto: CreateParameterDto): Promise<Parameter> {
-    const existing = await this.parameterRepository.findOne({ where: { key: dto.key } });
-    if (existing) throw new ConflictException(`Parâmetro '${dto.key}' já existe`);
-    const param = this.parameterRepository.create(dto);
+    const empresaId = (dto as any).empresaId ?? null;
+
+    // Verifica unicidade (key + empresaId)
+    const existing = await this.parameterRepository.findOne({
+      where: { key: dto.key, empresaId: empresaId ?? IsNull() },
+    });
+    if (existing) {
+      const escopo = empresaId ? `empresa #${empresaId}` : 'global';
+      throw new ConflictException(`Parâmetro '${dto.key}' já existe para ${escopo}`);
+    }
+
+    const param = this.parameterRepository.create({ ...dto, empresaId });
     return this.parameterRepository.save(param);
   }
 
   async update(id: number, dto: Partial<CreateParameterDto>): Promise<Parameter> {
-    await this.parameterRepository.update(id, dto);
+    await this.parameterRepository.update(id, dto as any);
     const param = await this.parameterRepository.findOne({ where: { id } });
     if (!param) throw new NotFoundException('Parâmetro não encontrado');
     return param;
@@ -53,7 +92,10 @@ export class ParametersService {
     return { message: 'Parâmetro removido com sucesso' };
   }
 
-  // Seed dos parâmetros CLT padrão
+  /**
+   * Cria os parâmetros CLT como globais (empresaId = NULL).
+   * Cada empresa pode criar overrides via POST /parameters com empresaId.
+   */
   async seedDefaultParameters(): Promise<void> {
     const defaults = [
       { key: 'HORA_EXTRA_NORMAL', value: '50', description: 'Percentual de hora extra em dias úteis e sábados (Art. 59, §1º CLT)', type: ParameterType.PERCENTUAL },
@@ -70,12 +112,16 @@ export class ParametersService {
     ];
 
     for (const param of defaults) {
-      const existing = await this.parameterRepository.findOne({ where: { key: param.key } });
+      const existing = await this.parameterRepository.findOne({
+        where: { key: param.key, empresaId: IsNull() },
+      });
       if (!existing) {
-        await this.parameterRepository.save(this.parameterRepository.create({ ...param, active: true }));
+        await this.parameterRepository.save(
+          this.parameterRepository.create({ ...param, empresaId: null, active: true }),
+        );
       }
     }
 
-    console.log('✅ Parâmetros CLT padrão verificados/criados');
+    console.log('✅ Parâmetros CLT globais verificados/criados');
   }
 }
